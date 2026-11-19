@@ -1,0 +1,701 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Detector de Cliques</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: enunciado arriba; panel de problema y datos a la izquierda; grafo, resultados y recorrido a la derecha. En celular se apilan. */
+:root {
+  --bg: #f5f7f9;
+  --surface: #ffffff;
+  --fg: #14212b;
+  --muted: #5b6b78;
+  --line: #c5d0d9;
+  --accent: #0b6b8a;
+  --accent-fg: #ffffff;
+  --hit: #c2410c;
+  --hit-bg: #fde4d3;
+  --ok: #0f7a4d;
+  --ok-bg: #d6f1e4;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-head: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e171d; --surface: #16232c; --fg: #e6edf2; --muted: #93a4b1; --line: #2e414e;
+    --accent: #4bb3d4; --accent-fg: #06222c; --hit: #fb923c; --hit-bg: #4a2410; --ok: #4ade9a; --ok-bg: #12382a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e171d; --surface: #16232c; --fg: #e6edf2; --muted: #93a4b1; --line: #2e414e;
+  --accent: #4bb3d4; --accent-fg: #06222c; --hit: #fb923c; --hit-bg: #4a2410; --ok: #4ade9a; --ok-bg: #12382a;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+h1 { font-family: var(--font-head); font-size: 28px; line-height: 1.15; margin: 0 0 6px; text-wrap: balance; }
+h2 { font-family: var(--font-head); font-size: 14px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.enun { border-left: 4px solid var(--accent); background: var(--surface); border-radius: 0 8px 8px 0; padding: 12px 16px; border-top: 1px solid var(--line); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.enun h2 { margin: 0 0 2px; }
+.enun .nom { font-family: var(--font-head); font-weight: 700; font-size: 19px; margin: 0 0 4px; overflow-wrap: anywhere; }
+.enun p { margin: 0; max-width: 75ch; overflow-wrap: anywhere; }
+.enun .def { color: var(--muted); font-size: 13.5px; margin-top: 6px; }
+.grid { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 780px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+label { font-weight: 500; font-size: 14px; display: block; margin-bottom: 4px; }
+textarea, input[type=text], select {
+  width: 100%; box-sizing: border-box; font: inherit; font-size: 14px;
+  background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+}
+textarea, input[type=text] { font-family: var(--font-mono); }
+textarea#enunciado { font-family: var(--font-body); }
+textarea { resize: vertical; min-height: 76px; }
+textarea[readonly], input[readonly] { opacity: .75; }
+.hint { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
+.stats { font-size: 13px; font-weight: 600; color: var(--accent); margin: 4px 0 0; }
+.stats:empty { display: none; }
+.warn { font-size: 13px; color: var(--hit); margin: 4px 0 0; }
+.warn:empty { display: none; }
+.row2 { display: flex; gap: 8px; flex-wrap: wrap; }
+.btns { display: flex; flex-direction: column; gap: 8px; }
+button {
+  font: inherit; font-weight: 500; cursor: pointer; border-radius: 6px; padding: 9px 12px; text-align: left;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line);
+}
+button.algo.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+button.small { padding: 6px 10px; font-size: 13.5px; text-align: center; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button small { display: block; font-weight: 400; opacity: .8; font-size: 12.5px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; width: 100%; }
+svg { width: 100%; height: auto; max-height: 340px; display: block; }
+.edge { stroke: var(--line); stroke-width: 2; }
+.edge.hit { stroke: var(--hit); stroke-width: 3.5; }
+.node { fill: var(--surface); stroke: var(--muted); stroke-width: 2; }
+.node.hit { fill: var(--hit-bg); stroke: var(--hit); stroke-width: 3; }
+.node.vec { fill: var(--bg); stroke: var(--line); stroke-width: 1.5; }
+.lbl { fill: var(--fg); font-family: var(--font-head); font-weight: 700; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.note { fill: var(--muted); font-family: var(--font-body); font-size: 14px; }
+.cap { fill: var(--muted); font-family: var(--font-body); font-size: 11.5px; text-anchor: middle; }
+.result { border-left: 4px solid var(--line); padding: 8px 12px; background: var(--bg); border-radius: 0 6px 6px 0; }
+.result.yes { border-color: var(--ok); }
+.result.no { border-color: var(--hit); }
+.result strong { font-family: var(--font-head); font-size: 17px; }
+.result p { margin: 4px 0 0; color: var(--muted); overflow-wrap: anywhere; }
+.runs { display: flex; flex-direction: column; gap: 6px; }
+.runs:empty { display: none; }
+.run { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; font-family: var(--font-mono); font-size: 13.5px; }
+.run[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.run > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.pill { flex: none; font-family: var(--font-body); font-weight: 600; font-size: 12.5px; padding: 2px 9px; border-radius: 99px; }
+.pill.yes { background: var(--ok-bg); color: var(--ok); }
+.pill.no { background: var(--hit-bg); color: var(--hit); }
+.trace { font-family: var(--font-mono); font-size: 13px; line-height: 1.6; max-height: 260px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; white-space: pre; }
+.trace .ok { color: var(--ok); font-weight: 600; }
+.trace .back { color: var(--hit); }
+.trace .mut { color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Detector de cliques</h1>
+  </header>
+
+  <section class="enun" aria-label="Enunciado del problema">
+    <h2>Enunciado</h2>
+    <p class="nom" id="enTitulo"></p>
+    <p id="enTexto"></p>
+    <p class="def">Una clique es un grupo de vértices donde todos están conectados con todos. La pregunta de decisión es: ¿existe una clique de tamaño al menos k?</p>
+  </section>
+
+  <div class="grid">
+    <section class="card" aria-label="Problema y datos">
+      <div>
+        <h2>Problema</h2>
+        <label for="sel">Problemas disponibles</label>
+        <select id="sel"></select>
+        <p class="hint">Los marcados con ★ son los que ingresaste en este navegador.</p>
+      </div>
+      <div>
+        <label for="nombre">Nombre del problema</label>
+        <input type="text" id="nombre" spellcheck="false" placeholder="Ej. Red de proveedores">
+      </div>
+      <div>
+        <label for="enunciado">Enunciado</label>
+        <textarea id="enunciado" spellcheck="true" placeholder="Describe el problema con tus palabras. Si lo dejas vacío, se usa uno genérico."></textarea>
+      </div>
+      <div>
+        <label for="edges">Transferencias (aristas)</label>
+        <textarea id="edges" spellcheck="false"></textarea>
+        <p class="hint">Pares con guion, separados por coma o salto de línea: A-B, C-D. Un nombre solo (F) agrega un vértice sin conexiones.</p>
+        <p class="stats" id="stats"></p>
+        <p class="warn" id="warn" aria-live="polite"></p>
+      </div>
+      <div>
+        <label for="k">Tamaños k a buscar</label>
+        <input type="text" id="k" spellcheck="false" placeholder="3, 4, 5">
+        <p class="hint">Uno o varios valores de 2 en adelante, separados por coma.</p>
+      </div>
+      <div>
+        <label for="grupos">Grupos a verificar</label>
+        <textarea id="grupos" spellcheck="false" placeholder="C, D, E"></textarea>
+        <p class="hint">Un grupo por línea, con los vértices separados por coma o espacio.</p>
+      </div>
+      <div class="row2">
+        <button type="button" class="small" id="bIngresar">Ingresar problema</button>
+        <button type="button" class="small" id="bNuevo">Nuevo</button>
+        <button type="button" class="small" id="bBorrar">Borrar</button>
+      </div>
+      <p class="hint" id="msg" aria-live="polite">Pulsa Nuevo, escribe tu enunciado y tus datos, y luego Ingresar problema para agregarlo a la lista.</p>
+      <hr>
+      <div class="btns">
+        <button type="button" class="algo" id="bBack" aria-pressed="false">Backtracking<small>Exacto: responde SÍ o NO con certeza para cada k</small></button>
+        <button type="button" class="algo" id="bVoraz" aria-pressed="false">Voraz<small>Rápido: puede perder la clique más grande</small></button>
+        <button type="button" class="algo" id="bVer" aria-pressed="false">Verificar grupos<small>Comprueba si cada grupo es clique</small></button>
+      </div>
+    </section>
+
+    <div class="col">
+      <section class="card" aria-label="Resultado">
+        <h2>Grafo</h2>
+        <svg id="svg" viewBox="0 0 360 300" role="img" aria-label="Grafo de cuentas y transferencias"></svg>
+        <div id="result" class="result" aria-live="polite"><strong>Elige un método</strong><p>Los vértices del grupo encontrado se marcan en naranja.</p></div>
+        <div>
+          <h2 id="runsTitle">Resultados</h2>
+          <div class="runs" id="runs"></div>
+          <p class="hint" id="runsHint"></p>
+        </div>
+      </section>
+      <section class="card" aria-label="Recorrido">
+        <h2>Paso a paso</h2>
+        <div id="trace" class="trace" tabindex="0"><span class="mut">Aquí aparece el recorrido del algoritmo.</span></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===PURE_START=== */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* Grafo aleatorio disperso con un anillo (clique) y un señuelo plantados. */
+function generarGrande(users, edgesTarget, seed, ringSize, decoySize) {
+  const rnd = mulberry32(seed);
+  const nom = (i) => "U" + String(i).padStart(4, "0");
+  const g = {};
+  for (let i = 1; i <= users; i++) g[nom(i)] = new Set();
+  let m = 0;
+  const add = (a, b) => {
+    if (a === b || g[a].has(b)) return false;
+    g[a].add(b); g[b].add(a); m++;
+    return true;
+  };
+  const rv = () => nom(1 + Math.floor(rnd() * users));
+  while (m < edgesTarget) add(rv(), rv());
+  const pick = (sz, evitar) => {
+    const s = [];
+    while (s.length < sz) { const v = rv(); if (!s.includes(v) && !evitar.includes(v)) s.push(v); }
+    return s.sort();
+  };
+  const ring = pick(ringSize, []);
+  const decoy = pick(decoySize, ring);
+  [ring, decoy].forEach((c) => {
+    for (let i = 0; i < c.length; i++) for (let j = i + 1; j < c.length; j++) add(c[i], c[j]);
+  });
+  return { g, m, ring, decoy };
+}
+
+/* Poda por grado: una clique de tamaño k exige al menos k-1 vecinos por vértice. */
+function nucleo(g, k) {
+  const deg = {}, queue = [], gone = new Set();
+  for (const v in g) { deg[v] = g[v].size; if (deg[v] < k - 1) { gone.add(v); queue.push(v); } }
+  while (queue.length) {
+    const v = queue.pop();
+    g[v].forEach((u) => {
+      if (gone.has(u)) return;
+      deg[u]--;
+      if (deg[u] < k - 1) { gone.add(u); queue.push(u); }
+    });
+  }
+  const h = {};
+  for (const v in g) {
+    if (gone.has(v)) continue;
+    const s = new Set();
+    g[v].forEach((u) => { if (!gone.has(u)) s.add(u); });
+    h[v] = s;
+  }
+  return { h, removed: gone.size };
+}
+
+function backtracking(g, k, conTraza = true) {
+  const trace = [];
+  const T = (o) => { if (conTraza && trace.length < 400) trace.push(o); };
+  const total = Object.keys(g).length;
+  const { h, removed } = nucleo(g, k);
+  if (removed > 0) T({ d: 0, t: `poda por grado: se descartan ${removed} de ${total} vértices con menos de ${k - 1} vecinos`, c: "mut" });
+  const vs = Object.keys(h).sort();
+  let steps = 0;
+  const CAP = 300000;
+  function rec(cur, cands, d) {
+    steps++;
+    if (steps > CAP) return null;
+    if (cur.length >= k) {
+      T({ d, t: `[${cur.join(", ")}] tiene tamaño ${cur.length} >= ${k}: ENCONTRADA`, c: "ok" });
+      return cur;
+    }
+    if (cur.length + cands.length < k) {
+      T({ d, t: `[${cur.join(", ")}] + [${cands.join(", ")}] no alcanza ${k}: retrocedo`, c: "back" });
+      return null;
+    }
+    for (let i = 0; i < cands.length; i++) {
+      const v = cands[i];
+      const nuevos = cands.slice(i + 1).filter((u) => h[v].has(u));
+      T({ d, t: `agrego ${v}: conjunto [${[...cur, v].join(", ")}], candidatos [${nuevos.join(", ")}]`, c: "mut" });
+      const res = rec([...cur, v], nuevos, d + 1);
+      if (res) return res;
+      if (steps > CAP) return null;
+    }
+    return null;
+  }
+  let res = null;
+  if (vs.length >= k) res = rec([], vs, 0);
+  else T({ d: 0, t: `quedan ${vs.length} vértices, menos que k = ${k}: NO`, c: "back" });
+  return { res, trace, steps, capped: steps > CAP, removed, total };
+}
+
+function voraz(g) {
+  const cur = [], trace = [];
+  let cands = Object.keys(g).sort();
+  while (cands.length) {
+    let v = cands[0];
+    cands.forEach((u) => { if (g[u].size > g[v].size) v = u; });
+    cur.push(v);
+    trace.push({ d: 0, t: `elijo ${v} (grado ${g[v].size}) -> conjunto [${cur.join(", ")}]`, c: "mut" });
+    cands = cands.filter((u) => u !== v && g[v].has(u));
+    trace.push({ d: 1, t: `candidatos restantes: [${cands.join(", ")}]`, c: "mut" });
+  }
+  return { res: cur, trace };
+}
+
+/* Clique máxima: sube k hasta que el backtracking ya no encuentre ninguna. */
+function maximaPorK(g) {
+  let best = [];
+  for (let k = 2; k <= Object.keys(g).length + 1; k++) {
+    const r = backtracking(g, k, false);
+    if (r.capped) return { best, exacto: false };
+    if (!r.res) break;
+    best = r.res;
+  }
+  return { best, exacto: true };
+}
+/* ===PURE_END=== */
+
+const $ = (id) => document.getElementById(id);
+const KEY = "detector-cliques.problemas";
+
+const BUILTIN = [
+  {
+    name: "Anillo de cuentas (ejemplo)",
+    enunciado: "Un banco sospecha de un anillo de fraude: cuentas falsas que se transfieren dinero entre todas para aparentar movimiento legítimo. Cada cuenta es un vértice y cada transferencia es una arista. ¿Existe un grupo de k cuentas donde todas se hayan transferido con todas? Busca con los k indicados y verifica los grupos propuestos.",
+    edges: "A-B, A-C, C-D, C-E, D-E", k: "3, 4", grupos: "C, D, E\nA, B, C"
+  },
+  {
+    name: "Equipo de trabajo (pizarrón)",
+    enunciado: "Una empresa quiere formar un equipo de k personas donde todas hayan trabajado antes entre sí, para que arranque sin fricción. Cada persona es un vértice y cada colaboración previa es una arista. ¿Existe un equipo de tamaño k donde todos se conozcan?",
+    edges: "A-B, A-C, A-D, B-C, B-D, C-D, D-E", k: "4, 5", grupos: "A, B, C, D\nA, B, E"
+  },
+  {
+    name: "Dos triángulos unidos",
+    enunciado: "Dos grupos de tres personas se conocen todos dentro de su grupo y los une solo una amistad entre C y D. ¿Existe una clique de tamaño k? Sirve para ver que {A, B, C} y {D, E, F} son cliques, pero ningún grupo mayor lo es.",
+    edges: "A-B, A-C, B-C, C-D, D-E, D-F, E-F", k: "3, 4", grupos: "A, B, C\nD, E, F\nC, D"
+  },
+  {
+    name: "Red de 5000 usuarios",
+    enunciado: "Una plataforma de pagos tiene {n} usuarios y {m} transferencias registradas. Se sospecha que un grupo pequeño de usuarios se mueve dinero entre todos para simular actividad real. ¿Existe un grupo de k usuarios con transferencias entre todos? Compara cómo responde cada algoritmo cuando el grafo es grande.",
+    gen: { users: 5000, edges: 11000, seed: 2026, ring: 6, decoy: 5 }, k: "5, 6, 7"
+  }
+];
+
+let G = {}, HIT = new Set(), RUNS = [], BIG = null, STATS = { n: 0, m: 0 };
+const CACHE = {};
+
+/* ---------- utilidades ---------- */
+function esc(t) {
+  return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+}
+function setMsg(t) { $("msg").textContent = t; }
+
+function setActive(id) {
+  ["bBack", "bVoraz", "bVer"].forEach((b) => {
+    const on = b === id;
+    $(b).classList.toggle("active", on);
+    $(b).setAttribute("aria-pressed", String(on));
+  });
+}
+
+/* ---------- enunciado ---------- */
+function enunciadoTexto() {
+  const t = $("enunciado").value.trim();
+  if (t) return t;
+  const { n, m } = STATS;
+  return n
+    ? `Dado un grafo de ${n} vértices y ${m} aristas, ¿existe un grupo de k vértices donde todos estén conectados entre sí (una clique de tamaño k)?`
+    : "Escribe las aristas del problema y, si quieres, su enunciado.";
+}
+function updateEnunciado() {
+  $("enTitulo").textContent = $("nombre").value.trim() || "Problema sin nombre";
+  $("enTexto").textContent = enunciadoTexto();
+}
+$("nombre").addEventListener("input", updateEnunciado);
+$("enunciado").addEventListener("input", updateEnunciado);
+
+/* ---------- problemas ingresados ---------- */
+function loadCustom() {
+  try {
+    const a = JSON.parse(localStorage.getItem(KEY) || "[]");
+    return Array.isArray(a) ? a.filter((p) => p && typeof p.name === "string") : [];
+  } catch (e) { return []; }
+}
+function saveCustom(a) {
+  try { localStorage.setItem(KEY, JSON.stringify(a)); return true; } catch (e) { return false; }
+}
+function allProblems() { return BUILTIN.concat(loadCustom()); }
+function isBuiltin(name) { return BUILTIN.some((p) => p.name === name); }
+
+function refreshSelect(selected) {
+  const all = allProblems();
+  $("sel").innerHTML = all.map((p, i) => `<option value="${esc(p.name)}">${i < BUILTIN.length ? "" : "★ "}${esc(p.name)}</option>`).join("");
+  if (selected !== undefined) $("sel").value = selected;
+  $("bBorrar").disabled = isBuiltin($("sel").value);
+}
+
+function clearOutput() {
+  RUNS = [];
+  HIT = new Set();
+  setActive(null);
+  $("runs").innerHTML = "";
+  $("runsHint").textContent = "";
+  $("runsTitle").textContent = "Resultados";
+  $("trace").innerHTML = '<span class="mut">Aquí aparece el recorrido del algoritmo.</span>';
+  showResult("", "Elige un método", "Los vértices del grupo encontrado se marcan en naranja.");
+}
+
+function setLocked(on) {
+  ["nombre", "enunciado", "edges"].forEach((id) => { $(id).readOnly = on; });
+}
+
+function loadProblem(name) {
+  const p = allProblems().find((x) => x.name === name);
+  if (!p) return;
+  if (p.gen) {
+    if (!CACHE[name]) CACHE[name] = generarGrande(p.gen.users, p.gen.edges, p.gen.seed, p.gen.ring, p.gen.decoy);
+    const b = CACHE[name];
+    BIG = b;
+    const swapped = b.ring.slice(0, -1).concat(b.decoy[0]);
+    $("edges").value = `Problema generado: ${p.gen.users} usuarios y ${b.m} transferencias. La lista no se muestra por su tamaño. Para escribir tus propias aristas pulsa Nuevo.`;
+    $("enunciado").value = (p.enunciado || "").replace("{n}", p.gen.users).replace("{m}", b.m);
+    $("grupos").value = [b.ring.join(", "), swapped.join(", "), b.decoy.join(", ")].join("\n");
+    setLocked(true);
+  } else {
+    BIG = null;
+    $("edges").value = p.edges || "";
+    $("enunciado").value = p.enunciado || "";
+    $("grupos").value = p.grupos || "";
+    setLocked(false);
+  }
+  $("nombre").value = p.name;
+  $("k").value = p.k || "";
+  $("bBorrar").disabled = isBuiltin(name);
+  setMsg("");
+  clearOutput();
+  prepare();
+  draw();
+}
+
+$("sel").onchange = () => loadProblem($("sel").value);
+
+$("bNuevo").onclick = () => {
+  BIG = null;
+  setLocked(false);
+  $("nombre").value = "";
+  $("enunciado").value = "";
+  $("edges").value = "";
+  $("k").value = "3";
+  $("grupos").value = "";
+  setMsg("Problema vacío. Escribe nombre, enunciado y aristas, y pulsa Ingresar problema.");
+  clearOutput();
+  prepare();
+  draw();
+  $("nombre").focus();
+};
+
+$("bIngresar").onclick = () => {
+  if (BIG) { setMsg("Este problema es generado y no se puede modificar. Pulsa Nuevo para ingresar el tuyo."); return; }
+  let name = $("nombre").value.trim();
+  if (!name) { setMsg("Escribe un nombre para el problema."); return; }
+  if (!Object.keys(readGraph().g).length) { setMsg("Escribe al menos una arista, por ejemplo A-B."); return; }
+  if (isBuiltin(name)) name += " (copia)";
+  const custom = loadCustom();
+  const item = { name, enunciado: $("enunciado").value, edges: $("edges").value, k: $("k").value, grupos: $("grupos").value };
+  const i = custom.findIndex((p) => p.name === name);
+  if (i >= 0) custom[i] = item; else custom.push(item);
+  const ok = saveCustom(custom);
+  refreshSelect(name);
+  $("nombre").value = name;
+  prepare();
+  draw();
+  setMsg(ok ? `Problema ingresado: ${name}. Ya aparece en la lista; ahora elige un algoritmo.` : "Problema ingresado, pero este navegador no permite recordarlo después de cerrar la página.");
+};
+
+$("bBorrar").onclick = () => {
+  const name = $("sel").value;
+  if (isBuiltin(name)) return;
+  saveCustom(loadCustom().filter((p) => p.name !== name));
+  refreshSelect(BUILTIN[0].name);
+  loadProblem(BUILTIN[0].name);
+  setMsg(`Se borró: ${name}.`);
+};
+
+/* ---------- lectura de datos ---------- */
+function readGraph() {
+  const g = {}, ign = [];
+  $("edges").value.split(/[\n,;]+/).forEach((p) => {
+    const s = p.trim();
+    if (!s) return;
+    const m = s.match(/^([\p{L}\p{N}_]+)\s*[-–]\s*([\p{L}\p{N}_]+)$/u);
+    if (m) {
+      const a = m[1].toUpperCase(), b = m[2].toUpperCase();
+      if (a === b) { ign.push(s); return; }
+      (g[a] = g[a] || new Set()).add(b);
+      (g[b] = g[b] || new Set()).add(a);
+      return;
+    }
+    if (/^[\p{L}\p{N}_]+$/u.test(s)) { const a = s.toUpperCase(); g[a] = g[a] || new Set(); return; }
+    ign.push(s);
+  });
+  return { g, ign };
+}
+
+function readKs() {
+  const ks = $("k").value.split(/[\s,;]+/).filter(Boolean).map(Number).filter((n) => Number.isInteger(n) && n >= 2);
+  return [...new Set(ks)].sort((a, b) => a - b).slice(0, 8);
+}
+
+function readGroups() {
+  return $("grupos").value.split("\n").map((l) => [...new Set(l.split(/[\s,;]+/).filter(Boolean).map((x) => x.toUpperCase()))]).filter((a) => a.length);
+}
+
+function prepare() {
+  let ign = [];
+  if (BIG) G = BIG.g;
+  else { const r = readGraph(); G = r.g; ign = r.ign; }
+  HIT = new Set();
+  $("warn").textContent = ign.length ? `Se ignoró: ${ign.join(", ")}. Usa el formato A-B.` : "";
+  const n = Object.keys(G).length;
+  let m = 0;
+  for (const v in G) m += G[v].size;
+  m /= 2;
+  STATS = { n, m };
+  $("stats").textContent = n ? `${n} vértices · ${m} aristas` : "";
+  updateEnunciado();
+  return n;
+}
+
+/* ---------- dibujo y salida ---------- */
+function circle(list, cx, cy, r) {
+  const pos = {};
+  list.forEach((v, i) => {
+    const ang = -Math.PI / 2 + (2 * Math.PI * i) / list.length;
+    pos[v] = [cx + r * Math.cos(ang), cy + r * Math.sin(ang)];
+  });
+  return pos;
+}
+
+function draw() {
+  const vs = Object.keys(G).sort();
+  const n = vs.length;
+  if (n > 60) return drawBig(n);
+  const pos = circle(vs, 180, 150, n > 1 ? 115 : 0);
+  const nr = n <= 10 ? 19 : n <= 18 ? 14 : 10;
+  const fs = Math.max(8, Math.round(nr * 0.8));
+  let s = "";
+  vs.forEach((a) => G[a].forEach((b) => {
+    if (a < b) {
+      const hit = HIT.has(a) && HIT.has(b) ? " hit" : "";
+      s += `<line class="edge${hit}" x1="${pos[a][0]}" y1="${pos[a][1]}" x2="${pos[b][0]}" y2="${pos[b][1]}"/>`;
+    }
+  }));
+  vs.forEach((v) => {
+    const hit = HIT.has(v) ? " hit" : "";
+    s += `<circle class="node${hit}" cx="${pos[v][0]}" cy="${pos[v][1]}" r="${nr}"/><text class="lbl" style="font-size:${fs}px" x="${pos[v][0]}" y="${pos[v][1]}">${esc(v)}</text>`;
+  });
+  $("svg").innerHTML = s;
+}
+
+function drawBig(n) {
+  const core = [...HIT].filter((v) => G[v]).sort();
+  if (!core.length) {
+    $("svg").innerHTML =
+      `<text class="note" x="180" y="135" text-anchor="middle">Grafo de ${n} vértices:</text>` +
+      `<text class="note" x="180" y="158" text-anchor="middle">demasiado grande para dibujarlo.</text>` +
+      `<text class="note" x="180" y="181" text-anchor="middle">Al encontrar un grupo se muestra aquí.</text>`;
+    return;
+  }
+  const ngh = new Set();
+  core.forEach((v) => G[v].forEach((u) => { if (!HIT.has(u)) ngh.add(u); }));
+  const outer = [...ngh].sort().slice(0, 24);
+  const pos = Object.assign({}, circle(core, 180, 150, core.length > 1 ? 52 : 0), circle(outer, 180, 150, 118));
+  const shown = [...core, ...outer];
+  let s = "";
+  shown.forEach((a) => G[a].forEach((b) => {
+    if (a < b && pos[b]) {
+      const hit = HIT.has(a) && HIT.has(b) ? " hit" : "";
+      s += `<line class="edge${hit}" x1="${pos[a][0]}" y1="${pos[a][1]}" x2="${pos[b][0]}" y2="${pos[b][1]}"/>`;
+    }
+  }));
+  outer.forEach((v) => { s += `<circle class="node vec" cx="${pos[v][0]}" cy="${pos[v][1]}" r="6"/>`; });
+  core.forEach((v) => {
+    s += `<circle class="node hit" cx="${pos[v][0]}" cy="${pos[v][1]}" r="19"/><text class="lbl" style="font-size:9.5px" x="${pos[v][0]}" y="${pos[v][1]}">${esc(v)}</text>`;
+  });
+  s += `<text class="cap" x="180" y="294">Grupo de ${core.length} y ${outer.length} de sus ${ngh.size} vecinos (el resto de los ${n} vértices no se dibuja)</text>`;
+  $("svg").innerHTML = s;
+}
+
+function showResult(kind, title, text) {
+  const r = $("result");
+  r.className = "result " + kind;
+  r.innerHTML = `<strong>${esc(title)}</strong><p>${esc(text)}</p>`;
+}
+
+function showTrace(lines, extra) {
+  const html = lines.map((l) => `<span class="${l.c}">${"  ".repeat(l.d)}${esc(l.t)}</span>`).join("\n");
+  $("trace").innerHTML = html + (extra ? `\n<span class="mut">${esc(extra)}</span>` : "");
+  $("trace").scrollTop = 0;
+}
+
+function selectRun(i) {
+  const r = RUNS[i];
+  if (!r) return;
+  HIT = new Set(r.hit);
+  draw();
+  showTrace(r.trace, r.extra);
+  showResult(r.kind, r.title, r.text);
+  document.querySelectorAll("#runs .run").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.i === i)));
+}
+
+function renderRuns(title, hint) {
+  $("runsTitle").textContent = title;
+  $("runsHint").textContent = hint || "";
+  $("runs").innerHTML = RUNS.map((r, i) =>
+    `<button type="button" class="run" data-i="${i}" aria-pressed="false"><span>${esc(r.label)}</span><span class="pill ${r.kind}">${esc(r.pill)}</span></button>`
+  ).join("");
+  selectRun(0);
+}
+$("runs").onclick = (e) => {
+  const b = e.target.closest("button.run");
+  if (b) selectRun(+b.dataset.i);
+};
+
+function needData(needK, needGroups) {
+  const n = prepare();
+  draw();
+  RUNS = [];
+  $("runs").innerHTML = "";
+  $("runsHint").textContent = "";
+  if (!n) { showResult("no", "Sin datos", "Escribe al menos una arista, por ejemplo A-B."); return null; }
+  const ks = readKs();
+  if (needK && !ks.length) { showResult("no", "Falta k", "Escribe al menos un tamaño k de 2 en adelante, por ejemplo 3."); return null; }
+  const gr = readGroups();
+  if (needGroups && !gr.length) { showResult("no", "Faltan grupos", "Escribe al menos un grupo a verificar, por ejemplo C, D, E."); return null; }
+  return { ks, gr };
+}
+
+/* ---------- botones de método ---------- */
+$("bBack").onclick = () => {
+  setActive("bBack");
+  const d = needData(true, false);
+  if (!d) return;
+  RUNS = d.ks.map((k) => {
+    const { res, trace, steps, capped, removed, total } = backtracking(G, k);
+    const label = `k = ${k}`;
+    if (capped) return { label, pill: "Muy grande", kind: "no", hit: [], trace, extra: "", title: "Demasiado grande", text: "El grafo es muy grande para el backtracking exacto en el navegador. Es el efecto de que CLIQUE sea NP-completo." };
+    const extra = trace.length >= 400 ? "(recorrido recortado a 400 líneas)" : "";
+    const poda = removed > 0 ? ` La poda por grado descartó ${removed} de ${total} vértices antes de buscar.` : "";
+    return res
+      ? { label, pill: "SÍ", kind: "yes", hit: res, trace, extra, title: `SÍ para k = ${k}`, text: `Existe una clique de tamaño ${k}: {${res.join(", ")}}. Pasos explorados: ${steps}.${poda}` }
+      : { label, pill: "NO", kind: "no", hit: [], trace, extra, title: `NO para k = ${k}`, text: `Ningún grupo de ${k} vértices está conectado entre todos. Pasos explorados: ${steps}.${poda}` };
+  });
+  renderRuns("Resultado por k", "Pulsa un resultado para ver su grupo y su recorrido.");
+};
+
+$("bVoraz").onclick = () => {
+  setActive("bVoraz");
+  const d = needData(true, false);
+  if (!d) return;
+  const { res, trace } = voraz(G);
+  const mx = maximaPorK(G);
+  RUNS = d.ks.map((k) => {
+    const alcanza = res.length >= k;
+    let nota = alcanza
+      ? `Alcanza k = ${k}, así que se puede afirmar SÍ.`
+      : `No alcanza k = ${k}, pero eso no permite afirmar NO: el voraz solo da una clique maximal.`;
+    if (mx.exacto && mx.best.length > res.length) nota += ` La clique máxima real tiene tamaño ${mx.best.length}: {${mx.best.join(", ")}}.`;
+    else if (!mx.exacto) nota += " No se pudo calcular la clique máxima real en el navegador.";
+    return {
+      label: `k = ${k}`, pill: alcanza ? "Alcanza" : "No alcanza", kind: alcanza ? "yes" : "no",
+      hit: res, trace, extra: "", title: `Voraz encontró tamaño ${res.length}`, text: `Grupo {${res.join(", ")}}. ${nota}`
+    };
+  });
+  renderRuns("Voraz frente a cada k", "El voraz corre una sola vez; cada fila lo compara con un k distinto.");
+};
+
+$("bVer").onclick = () => {
+  setActive("bVer");
+  const d = needData(false, true);
+  if (!d) return;
+  RUNS = d.gr.map((arr) => {
+    const label = `{${arr.join(", ")}}`;
+    if (arr.length < 2) return { label, pill: "Inválido", kind: "no", hit: [], trace: [], extra: "", title: "Grupo inválido", text: "Un grupo necesita al menos dos vértices." };
+    const lines = [], faltan = arr.filter((v) => !G[v]);
+    let ok = true;
+    if (faltan.length) {
+      ok = false;
+      lines.push({ d: 0, t: `no están en el grafo: ${faltan.join(", ")}`, c: "back" });
+    }
+    for (let i = 0; i < arr.length; i++)
+      for (let j = i + 1; j < arr.length; j++) {
+        const t = !!(G[arr[i]] && G[arr[i]].has(arr[j]));
+        if (!t) ok = false;
+        lines.push({ d: 0, t: `${arr[i]}-${arr[j]}: ${t ? "existe" : "NO existe"}`, c: t ? "ok" : "back" });
+      }
+    const pares = (arr.length * (arr.length - 1)) / 2;
+    const extra = `${pares} pares revisados (k(k-1)/2)`;
+    return ok
+      ? { label, pill: "Es clique", kind: "yes", hit: arr, trace: lines, extra, title: "Es una clique", text: `Los ${arr.length} vértices de ${label} están conectados todos con todos.` }
+      : { label, pill: "No es clique", kind: "no", hit: [], trace: lines, extra, title: "No es una clique", text: faltan.length ? `Estos vértices no existen en el grafo: ${faltan.join(", ")}.` : "Falta al menos una arista entre los vértices del grupo." };
+  });
+  renderRuns("Resultado por grupo", "Pulsa un grupo para ver sus pares revisados.");
+};
+
+/* ---------- arranque ---------- */
+refreshSelect(BUILTIN[0].name);
+loadProblem(BUILTIN[0].name);
+</script>
+
+</body></html>
