@@ -103,6 +103,10 @@ svg { width: 100%; height: auto; max-height: 340px; display: block; }
 .trace .ok { color: var(--ok); font-weight: 600; }
 .trace .back { color: var(--hit); }
 .trace .mut { color: var(--muted); }
+.guia { margin: 10px 0 14px; font-size: 14px; }
+.guia summary { cursor: pointer; font-weight: 600; font-family: var(--font-head); }
+.guia ol { margin: 8px 0 0; padding-left: 20px; max-width: 75ch; }
+.guia li { margin: 3px 0; }
 </style>
 
 <div class="wrap">
@@ -116,6 +120,19 @@ svg { width: 100%; height: auto; max-height: 340px; display: block; }
     <p id="enTexto"></p>
     <p class="def">Una clique es un grupo de vértices donde todos están conectados con todos. La pregunta de decisión es: ¿existe una clique de tamaño al menos k?</p>
   </section>
+
+
+  <details class="enun guia" open>
+    <summary>Cómo usar el caso guía en cada parte de la exposición</summary>
+    <ol>
+      <li><b>Motivación:</b> el banco sospecha que 5 cuentas falsas se mueven dinero entre sí para simular actividad real.</li>
+      <li><b>Modelado:</b> cuenta = vértice, transferencia = arista. El patrón “todas con todas” es una clique.</li>
+      <li><b>Decisión:</b> ¿existe una clique de tamaño al menos k? Se responde con k = 3, 4, 5 y 6.</li>
+      <li><b>NP:</b> si alguien propone {M1…M5}, comprobar sus 10 pares es rápido. Esa es la verificación.</li>
+      <li><b>NP-completo:</b> con miles de cuentas no hay algoritmo rápido y exacto conocido, y la demostración explica por qué.</li>
+      <li><b>Algoritmos:</b> pulsa Backtracking (exacto), Voraz (rápido, se equivoca: T tiene más transferencias que cualquier cuenta falsa y lo desvía) y Verificar grupos. Para el contraste a gran escala, elige “Red de 5000 usuarios”.</li>
+    </ol>
+  </details>
 
   <div class="grid">
     <section class="card" aria-label="Problema y datos">
@@ -310,6 +327,13 @@ const $ = (id) => document.getElementById(id);
 const KEY = "detector-cliques.problemas";
 
 const BUILTIN = [
+  {
+    name: "Caso guía: red de fraude en un banco",
+    enunciado: "Un banco revisa las transferencias de una semana entre 12 cuentas. M1 a M5 son cuentas abiertas con identidades falsas; T es una tienda en línea legítima con muchos clientes (P1 a P4); N1 y N2 son cuentas comunes. Cada cuenta es un vértice y cada par de cuentas que se transfirió dinero es una arista. Un anillo de fraude se ve como un grupo donde todas las cuentas se movieron dinero con todas. Pregunta de decisión: ¿existe un grupo de k cuentas con transferencias entre todas? Busca con k = 3, 4, 5 y 6, y verifica los grupos que propone el analista.",
+    edges: "M1-M2, M1-M3, M1-M4, M1-M5, M2-M3, M2-M4, M2-M5, M3-M4, M3-M5, M4-M5, T-M1, T-P1, T-P2, T-P3, T-P4, T-N1, P1-P2, P2-P3, P3-P4, P4-N1, N1-N2, N2-M5",
+    k: "3, 4, 5, 6",
+    grupos: "M1, M2, M3, M4, M5\nT, P1, P2\nT, M1, M2\nM1, M2, M3, M4, T"
+  },
   {
     name: "Anillo de cuentas (ejemplo)",
     enunciado: "Un banco sospecha de un anillo de fraude: cuentas falsas que se transfieren dinero entre todas para aparentar movimiento legítimo. Cada cuenta es un vértice y cada transferencia es una arista. ¿Existe un grupo de k cuentas donde todas se hayan transferido con todas? Busca con los k indicados y verifica los grupos propuestos.",
