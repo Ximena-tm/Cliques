@@ -122,17 +122,7 @@ svg { width: 100%; height: auto; max-height: 340px; display: block; }
   </section>
 
 
-  <details class="enun guia" open>
-    <summary>Cómo usar el caso guía en cada parte de la exposición</summary>
-    <ol>
-      <li><b>Motivación:</b> el banco sospecha que 5 cuentas falsas se mueven dinero entre sí para simular actividad real.</li>
-      <li><b>Modelado:</b> cuenta = vértice, transferencia = arista. El patrón “todas con todas” es una clique.</li>
-      <li><b>Decisión:</b> ¿existe una clique de tamaño al menos k? Se responde con k = 3, 4, 5 y 6.</li>
-      <li><b>NP:</b> si alguien propone {M1…M5}, comprobar sus 10 pares es rápido. Esa es la verificación.</li>
-      <li><b>NP-completo:</b> con miles de cuentas no hay algoritmo rápido y exacto conocido, y la demostración explica por qué.</li>
-      <li><b>Algoritmos:</b> pulsa Backtracking (exacto), Voraz (rápido, se equivoca: T tiene más transferencias que cualquier cuenta falsa y lo desvía) y Verificar grupos. Para el contraste a gran escala, elige “Red de 5000 usuarios”.</li>
-    </ol>
-  </details>
+
 
   <div class="grid">
     <section class="card" aria-label="Problema y datos">
