@@ -1,123 +1,448 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Detector de Cliques</title>
+<title>Cliques</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
 <style>
-/* Layout: enunciado arriba; panel de problema y datos a la izquierda; grafo, resultados y recorrido a la derecha. En celular se apilan. */
+
+/* Layout: una columna de lectura (860px) con dos laboratorios interactivos: el verificador (parte 1) y la construcción del grafo (parte 2). Los colores c1 a c6 identifican cada cláusula en el texto y en el grafo. */
 :root {
-  --bg: #f5f7f9;
+  --bg: #f4f7fa;
   --surface: #ffffff;
   --fg: #14212b;
-  --muted: #5b6b78;
-  --line: #c5d0d9;
+  --muted: #566774;
+  --line: #c9d4dd;
+  --edge: #8fa4b3;
   --accent: #0b6b8a;
   --accent-fg: #ffffff;
+  --accent-soft: #dcedf4;
   --hit: #c2410c;
   --hit-bg: #fde4d3;
   --ok: #0f7a4d;
   --ok-bg: #d6f1e4;
+  --bad: #b91c1c;
+  --bad-bg: #fbdcdc;
+  --c1: #1d6fa5;
+  --c2: #0f766e;
+  --c3: #7c3aed;
+  --c4: #be185d;
+  --c5: #4d7c0f;
+  --c6: #475569;
   --font-body: "Inter", system-ui, sans-serif;
   --font-head: "Space Grotesk", "Inter", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0e171d; --surface: #16232c; --fg: #e6edf2; --muted: #93a4b1; --line: #2e414e;
-    --accent: #4bb3d4; --accent-fg: #06222c; --hit: #fb923c; --hit-bg: #4a2410; --ok: #4ade9a; --ok-bg: #12382a;
+    --bg: #0e171d; --surface: #16232c; --fg: #e6edf2; --muted: #9aabb8; --line: #2e414e; --edge: #5f7686;
+    --accent: #4bb3d4; --accent-fg: #06222c; --accent-soft: #15323e;
+    --hit: #fb923c; --hit-bg: #4a2410; --ok: #4ade9a; --ok-bg: #12382a; --bad: #f87171; --bad-bg: #4a1d1d;
+    --c1: #5aa9e6; --c2: #2dd4bf; --c3: #a78bfa; --c4: #f472b6; --c5: #a3e635; --c6: #94a3b8;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0e171d; --surface: #16232c; --fg: #e6edf2; --muted: #93a4b1; --line: #2e414e;
-  --accent: #4bb3d4; --accent-fg: #06222c; --hit: #fb923c; --hit-bg: #4a2410; --ok: #4ade9a; --ok-bg: #12382a;
+  --bg: #0e171d; --surface: #16232c; --fg: #e6edf2; --muted: #9aabb8; --line: #2e414e; --edge: #5f7686;
+  --accent: #4bb3d4; --accent-fg: #06222c; --accent-soft: #15323e;
+  --hit: #fb923c; --hit-bg: #4a2410; --ok: #4ade9a; --ok-bg: #12382a; --bad: #f87171; --bad-bg: #4a1d1d;
+  --c1: #5aa9e6; --c2: #2dd4bf; --c3: #a78bfa; --c4: #f472b6; --c5: #a3e635; --c6: #94a3b8;
   color-scheme: dark;
 }
 body {
-  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.6;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 24px;
+  padding-block: 28px 56px;
 }
-.wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
-h1 { font-family: var(--font-head); font-size: 28px; line-height: 1.15; margin: 0 0 6px; text-wrap: balance; }
-h2 { font-family: var(--font-head); font-size: 14px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
-.enun { border-left: 4px solid var(--accent); background: var(--surface); border-radius: 0 8px 8px 0; padding: 12px 16px; border-top: 1px solid var(--line); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.enun h2 { margin: 0 0 2px; }
-.enun .nom { font-family: var(--font-head); font-weight: 700; font-size: 19px; margin: 0 0 4px; overflow-wrap: anywhere; }
-.enun p { margin: 0; max-width: 75ch; overflow-wrap: anywhere; }
-.enun .def { color: var(--muted); font-size: 13.5px; margin-top: 6px; }
-.grid { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 20px; align-items: start; }
-@media (max-width: 780px) { .grid { grid-template-columns: minmax(0, 1fr); } }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
-label { font-weight: 500; font-size: 14px; display: block; margin-bottom: 4px; }
-textarea, input[type=text], select {
-  width: 100%; box-sizing: border-box; font: inherit; font-size: 14px;
-  background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
-}
-textarea, input[type=text] { font-family: var(--font-mono); }
-textarea#enunciado { font-family: var(--font-body); }
-textarea { resize: vertical; min-height: 76px; }
-textarea[readonly], input[readonly] { opacity: .75; }
-.hint { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
-.stats { font-size: 13px; font-weight: 600; color: var(--accent); margin: 4px 0 0; }
-.stats:empty { display: none; }
-.warn { font-size: 13px; color: var(--hit); margin: 4px 0 0; }
-.warn:empty { display: none; }
-.row2 { display: flex; gap: 8px; flex-wrap: wrap; }
-.btns { display: flex; flex-direction: column; gap: 8px; }
+.wrap { max-width: 860px; margin: 0; display: flex; flex-direction: column; gap: 40px; }
+section.blk { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+h1 { font-family: var(--font-head); font-size: clamp(28px, 6vw, 40px); line-height: 1.1; margin: 0 0 10px; text-wrap: balance; }
+h2 { font-family: var(--font-head); font-size: clamp(21px, 4vw, 26px); line-height: 1.2; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--font-head); font-size: 17px; margin: 8px 0 0; }
+p { margin: 0; max-width: 68ch; }
+p.lead { color: var(--muted); font-size: 17px; }
+.eyebrow { font-family: var(--font-head); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0; }
+ul, ol { margin: 0; padding-left: 22px; max-width: 68ch; display: flex; flex-direction: column; gap: 6px; }
+.m { font-family: var(--font-head); font-weight: 500; white-space: nowrap; }
+code, .code { font-family: var(--font-mono); font-size: .92em; }
+.callout { background: var(--accent-soft); border-radius: 8px; padding: 12px 16px; max-width: 68ch; }
+.callout p { max-width: none; }
+.callout.ok { background: var(--ok-bg); }
+.hint { font-size: 13.5px; color: var(--muted); margin: 0; max-width: none; }
+
+/* mapa de la demostración */
+.flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 700px) { .flow { grid-template-columns: minmax(0, 1fr); } }
+.step { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.step b { font-family: var(--font-head); font-size: 15px; }
+.step span.n { font-family: var(--font-head); font-size: 12.5px; color: var(--accent); letter-spacing: .06em; text-transform: uppercase; }
+.step p { font-size: 14.5px; color: var(--muted); }
+.red { display: flex; align-items: stretch; gap: 8px; flex-wrap: wrap; }
+.red > div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; flex: 1 1 150px; min-width: 0; font-size: 14.5px; }
+.red > div b { display: block; font-family: var(--font-head); }
+.red .arr { flex: 0 0 auto; border: 0; background: none; padding: 0; align-self: center; color: var(--accent); font-size: 22px; min-width: 0; }
+.red .arr::before { content: "→"; }
+@media (max-width: 700px) { .red .arr { flex-basis: 100%; text-align: center; } .red .arr::before { content: "↓"; } }
+
+/* fórmulas con color por cláusula */
+.cl { display: inline-block; font-family: var(--font-head); font-weight: 500; padding: 1px 8px; border-radius: 6px; border: 1.5px solid var(--cc); color: var(--cc); background: var(--surface); margin: 2px 0; white-space: nowrap; }
+.c1 { --cc: var(--c1); } .c2 { --cc: var(--c2); } .c3 { --cc: var(--c3); } .c4 { --cc: var(--c4); } .c5 { --cc: var(--c5); } .c6 { --cc: var(--c6); }
+.formula { font-size: 17px; line-height: 2; }
+
+/* tablas */
+.tw { overflow-x: auto; max-width: 100%; }
+table { border-collapse: collapse; font-size: 14.5px; min-width: 520px; width: 100%; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-head); font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* laboratorios */
+.lab { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.lab h3 { margin: 0; }
+.cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 760px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 button {
-  font: inherit; font-weight: 500; cursor: pointer; border-radius: 6px; padding: 9px 12px; text-align: left;
+  font: inherit; font-size: 14.5px; font-weight: 500; cursor: pointer; border-radius: 6px; padding: 7px 12px;
   background: var(--surface); color: var(--fg); border: 1px solid var(--line);
 }
-button.algo.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
-button.small { padding: 6px 10px; font-size: 13.5px; text-align: center; }
 button:hover:not(:disabled) { border-color: var(--accent); }
 button:disabled { opacity: .45; cursor: not-allowed; }
-button small { display: block; font-weight: 400; opacity: .8; font-size: 12.5px; }
+button.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+button.link { background: none; border: 0; color: var(--accent); padding: 0; text-decoration: underline; font-size: inherit; }
+button.act { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-hr { border: 0; border-top: 1px solid var(--line); margin: 0; width: 100%; }
-svg { width: 100%; height: auto; max-height: 340px; display: block; }
-.edge { stroke: var(--line); stroke-width: 2; }
-.edge.hit { stroke: var(--hit); stroke-width: 3.5; }
-.node { fill: var(--surface); stroke: var(--muted); stroke-width: 2; }
-.node.hit { fill: var(--hit-bg); stroke: var(--hit); stroke-width: 3; }
-.node.vec { fill: var(--bg); stroke: var(--line); stroke-width: 1.5; }
-.lbl { fill: var(--fg); font-family: var(--font-head); font-weight: 700; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-.note { fill: var(--muted); font-family: var(--font-body); font-size: 14px; }
-.cap { fill: var(--muted); font-family: var(--font-body); font-size: 11.5px; text-anchor: middle; }
-.result { border-left: 4px solid var(--line); padding: 8px 12px; background: var(--bg); border-radius: 0 6px 6px 0; }
-.result.yes { border-color: var(--ok); }
-.result.no { border-color: var(--hit); }
-.result strong { font-family: var(--font-head); font-size: 17px; }
-.result p { margin: 4px 0 0; color: var(--muted); overflow-wrap: anywhere; }
-.runs { display: flex; flex-direction: column; gap: 6px; }
-.runs:empty { display: none; }
-.run { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; font-family: var(--font-mono); font-size: 13.5px; }
-.run[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.run > span:first-child { min-width: 0; overflow-wrap: anywhere; }
-.pill { flex: none; font-family: var(--font-body); font-weight: 600; font-size: 12.5px; padding: 2px 9px; border-radius: 99px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+textarea { width: 100%; box-sizing: border-box; font-family: var(--font-head); font-size: 16px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; resize: vertical; min-height: 64px; }
+.err { color: var(--bad); font-size: 13.5px; margin: 0; }
+.err:empty { display: none; }
+.pill { display: inline-block; font-weight: 600; font-size: 13px; padding: 2px 10px; border-radius: 99px; }
 .pill.yes { background: var(--ok-bg); color: var(--ok); }
-.pill.no { background: var(--hit-bg); color: var(--hit); }
-.trace { font-family: var(--font-mono); font-size: 13px; line-height: 1.6; max-height: 260px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; white-space: pre; }
-.trace .ok { color: var(--ok); font-weight: 600; }
-.trace .back { color: var(--hit); }
-.trace .mut { color: var(--muted); }
-.guia { margin: 10px 0 14px; font-size: 14px; }
-.guia summary { cursor: pointer; font-weight: 600; font-family: var(--font-head); }
-.guia ol { margin: 8px 0 0; padding-left: 20px; max-width: 75ch; }
-.guia li { margin: 3px 0; }
-</style>
+.pill.no { background: var(--bad-bg); color: var(--bad); }
+.pill.neu { background: var(--accent-soft); color: var(--accent); }
+.eq { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 14.5px; background: var(--bg); border-radius: 8px; padding: 8px 12px; }
+.legend { display: flex; gap: 6px; flex-wrap: wrap; }
 
-<div class="wrap">
-  <header>
-    <h1>Detector de cliques</h1>
+svg.g { width: 100%; height: auto; display: block; background: var(--bg); border-radius: 8px; }
+svg.g.np { max-height: 300px; }
+.clu { fill: var(--cc); fill-opacity: .08; stroke: var(--cc); stroke-opacity: .55; stroke-dasharray: 4 4; stroke-width: 1.5; }
+.clab { fill: var(--cc); font-family: var(--font-head); font-weight: 700; font-size: 20px; text-anchor: middle; dominant-baseline: central; }
+.ed { stroke: var(--edge); stroke-width: 1.6; opacity: .8; }
+.ed.bad { stroke: var(--bad); stroke-dasharray: 5 4; opacity: .95; stroke-width: 2; }
+.ed.faint { opacity: .28; }
+.ed.hit { stroke: var(--hit); stroke-width: 4.5; opacity: 1; }
+.ed.inc { stroke: var(--accent); stroke-width: 3; opacity: 1; }
+.ed.dim { opacity: .1; }
+.nd { cursor: pointer; }
+.nd circle { fill: var(--surface); stroke-width: 2.6; }
+.nd text { fill: var(--fg); font-family: var(--font-head); font-weight: 700; font-size: 16px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.nd.hit circle { fill: var(--hit-bg); stroke: var(--hit); stroke-width: 3.5; }
+.nd.sel circle { stroke: var(--accent); stroke-width: 4.5; }
+.nd.dim { opacity: .3; }
+.nd.cert circle { fill: var(--hit-bg); stroke: var(--hit); stroke-width: 3.5; }
+.nd:focus-visible circle { stroke: var(--accent); stroke-width: 4.5; }
+
+.crow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.crow:last-child { border-bottom: 0; }
+.lit { font-family: var(--font-head); font-weight: 500; padding: 0 6px; border-radius: 4px; }
+.lit.t { background: var(--ok-bg); color: var(--ok); font-weight: 700; }
+.lit.f { color: var(--muted); text-decoration: line-through; }
+.res { margin-left: auto; font-size: 13.5px; font-weight: 600; }
+.res.ok { color: var(--ok); } .res.no { color: var(--bad); }
+.vars { display: flex; gap: 6px; flex-wrap: wrap; }
+.vars button { font-family: var(--font-head); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-family: var(--font-head); font-size: 14px; padding: 1px 8px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); }
+.chip.ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+.chip.no { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+.info { font-size: 14.5px; background: var(--bg); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.info p { max-width: none; }
+.info:empty { display: none; }
+.key { display: inline-block; width: 28px; height: 0; border-top: 3px solid var(--edge); vertical-align: middle; margin-right: 4px; }
+.key.bad { border-top: 3px dashed var(--bad); }
+.key.hit { border-top: 4px solid var(--hit); }
+
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; max-width: 68ch; }
+summary { cursor: pointer; font-weight: 600; }
+details p { margin-top: 8px; }
+.num { font-variant-numeric: tabular-nums; font-weight: 600; }
+.sum li { max-width: none; }
+
+
+/* ===== Encabezado y pestañas ===== */
+.shell { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+.top { display: flex; flex-direction: column; gap: 10px; }
+.mtabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-top: 6px; flex-wrap: wrap; }
+.mtabs a { font-family: var(--font-head); font-weight: 500; font-size: 17px; color: var(--muted); text-decoration: none; padding: 10px 18px; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.mtabs a:hover { color: var(--fg); }
+.mtabs a.on { color: var(--accent); border-bottom-color: var(--accent); }
+a { color: var(--accent); }
+/* ===== Ejemplos (detector) ===== */
+#view-ej .vt { font-family: var(--font-head); font-size: clamp(26px, 5vw, 34px); text-wrap: balance; line-height: 1.15; margin: 0 0 4px; text-transform: none; letter-spacing: 0; color: var(--fg); }
+#view-ej .vtl { color: var(--muted); margin: 0 0 14px; max-width: 68ch; font-size: 17px; }
+#view-dem .intro { display: flex; flex-direction: column; gap: 10px; }
+#view-dem .vt { font-family: var(--font-head); font-size: clamp(26px, 5vw, 34px); line-height: 1.1; margin: 0; text-wrap: balance; }
+#view-ej .wrap > * { min-width: 0; }
+
+#view-ej .wrap{max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px;}
+#view-ej h1{font-family: var(--font-head); font-size: 28px; line-height: 1.15; margin: 0 0 6px; text-wrap: balance;}
+#view-ej h2{font-family: var(--font-head); font-size: 14px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px;}
+#view-ej .enun{border-left: 4px solid var(--accent); background: var(--surface); border-radius: 0 8px 8px 0; padding: 12px 16px; border-top: 1px solid var(--line); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);}
+#view-ej .enun h2{margin: 0 0 2px;}
+#view-ej .enun .nom{font-family: var(--font-head); font-weight: 700; font-size: 19px; margin: 0 0 4px; overflow-wrap: anywhere;}
+#view-ej .enun p{margin: 0; max-width: 75ch; overflow-wrap: anywhere;}
+#view-ej .enun .def{color: var(--muted); font-size: 13.5px; margin-top: 6px;}
+#view-ej .grid{display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 20px; align-items: start;}
+@media (max-width: 780px){#view-ej .grid{grid-template-columns: minmax(0, 1fr);}}
+#view-ej .card{background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0;}
+#view-ej .col{display: flex; flex-direction: column; gap: 20px; min-width: 0;}
+#view-ej label{font-weight: 500; font-size: 14px; display: block; margin-bottom: 4px;}
+#view-ej textarea,#view-ej input[type=text],#view-ej select{width: 100%; box-sizing: border-box; font: inherit; font-size: 14px;
+  background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;}
+#view-ej textarea,#view-ej input[type=text]{font-family: var(--font-mono);}
+#view-ej textarea#ej-enunciado{font-family: var(--font-body);}
+#view-ej textarea{resize: vertical; min-height: 76px;}
+#view-ej textarea[readonly],#view-ej input[readonly]{opacity: .75;}
+#view-ej .hint{font-size: 13px; color: var(--muted); margin: 4px 0 0;}
+#view-ej .stats{font-size: 13px; font-weight: 600; color: var(--accent); margin: 4px 0 0;}
+#view-ej .stats:empty{display: none;}
+#view-ej .warn{font-size: 13px; color: var(--hit); margin: 4px 0 0;}
+#view-ej .warn:empty{display: none;}
+#view-ej .row2{display: flex; gap: 8px; flex-wrap: wrap;}
+#view-ej .btns{display: flex; flex-direction: column; gap: 8px;}
+#view-ej button{font: inherit; font-weight: 500; cursor: pointer; border-radius: 6px; padding: 9px 12px; text-align: left;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line);}
+#view-ej button.algo.active{background: var(--accent); color: var(--accent-fg); border-color: var(--accent);}
+#view-ej button.small{padding: 6px 10px; font-size: 13.5px; text-align: center;}
+#view-ej button:hover:not(:disabled){border-color: var(--accent);}
+#view-ej button:disabled{opacity: .45; cursor: not-allowed;}
+#view-ej button small{display: block; font-weight: 400; opacity: .8; font-size: 12.5px;}
+#view-ej :focus-visible{outline: 2px solid var(--accent); outline-offset: 2px;}
+#view-ej hr{border: 0; border-top: 1px solid var(--line); margin: 0; width: 100%;}
+#view-ej svg{width: 100%; height: auto; max-height: 340px; display: block;}
+#view-ej .edge{stroke: var(--line); stroke-width: 2;}
+#view-ej .edge.hit{stroke: var(--hit); stroke-width: 3.5;}
+#view-ej .node{fill: var(--surface); stroke: var(--muted); stroke-width: 2;}
+#view-ej .node.hit{fill: var(--hit-bg); stroke: var(--hit); stroke-width: 3;}
+#view-ej .node.vec{fill: var(--bg); stroke: var(--line); stroke-width: 1.5;}
+#view-ej .lbl{fill: var(--fg); font-family: var(--font-head); font-weight: 700; text-anchor: middle; dominant-baseline: central; pointer-events: none;}
+#view-ej .note{fill: var(--muted); font-family: var(--font-body); font-size: 14px;}
+#view-ej .cap{fill: var(--muted); font-family: var(--font-body); font-size: 11.5px; text-anchor: middle;}
+#view-ej .result{border-left: 4px solid var(--line); padding: 8px 12px; background: var(--bg); border-radius: 0 6px 6px 0;}
+#view-ej .result.yes{border-color: var(--ok);}
+#view-ej .result.no{border-color: var(--hit);}
+#view-ej .result strong{font-family: var(--font-head); font-size: 17px;}
+#view-ej .result p{margin: 4px 0 0; color: var(--muted); overflow-wrap: anywhere;}
+#view-ej .runs{display: flex; flex-direction: column; gap: 6px;}
+#view-ej .runs:empty{display: none;}
+#view-ej .run{display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; font-family: var(--font-mono); font-size: 13.5px;}
+#view-ej .run[aria-pressed="true"]{border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent);}
+#view-ej .run > span:first-child{min-width: 0; overflow-wrap: anywhere;}
+#view-ej .pill{flex: none; font-family: var(--font-body); font-weight: 600; font-size: 12.5px; padding: 2px 9px; border-radius: 99px;}
+#view-ej .pill.yes{background: var(--ok-bg); color: var(--ok);}
+#view-ej .pill.no{background: var(--hit-bg); color: var(--hit);}
+#view-ej .trace{font-family: var(--font-mono); font-size: 13px; line-height: 1.6; max-height: 260px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; white-space: pre;}
+#view-ej .trace .ok{color: var(--ok); font-weight: 600;}
+#view-ej .trace .back{color: var(--hit);}
+#view-ej .trace .mut{color: var(--muted);}
+#view-ej .guia{margin: 10px 0 14px; font-size: 14px;}
+#view-ej .guia summary{cursor: pointer; font-weight: 600; font-family: var(--font-head);}
+#view-ej .guia ol{margin: 8px 0 0; padding-left: 20px; max-width: 75ch;}
+#view-ej .guia li{margin: 3px 0;}
+</style>
+<div class="shell">
+  <header class="top">
+    <h1>CLIQUES</h1>
+    <nav class="mtabs" aria-label="Secciones">
+      <a href="#demostracion" data-v="demostracion">Demostración</a>
+      <a href="#detector" data-v="detector">Detector de cliques</a>
+    </nav>
   </header>
+
+  <div id="view-dem">
+    <div class="wrap">
+    <div class="intro">
+      <h2 class="vt">CLIQUE es NP-completo</h2>
+      <p class="lead">La demostración de Cormen (CLRS, sección 34.5.1) con el grafo de la reducción dibujado, y un detector para probar los algoritmos con problemas de ejemplo.</p>
+    </div>
+
+  <!-- ============ QUÉ HAY QUE DEMOSTRAR ============ -->
+  <section class="blk">
+    <h2>Qué hay que demostrar</h2>
+    <p>Un problema de decisión L es <b>NP-completo</b> cuando cumple dos propiedades a la vez:</p>
+    <div class="flow">
+      <div class="step"><span class="n">Parte 1</span><b>L ∈ NP</b><p>Una solución propuesta (certificado) se puede verificar en tiempo polinomial.</p></div>
+      <div class="step"><span class="n">Parte 2</span><b>L es NP-difícil</b><p>Todo problema de NP se reduce a L en tiempo polinomial. Se prueba reduciendo a L un problema que ya se sabe NP-completo.</p></div>
+      <div class="step"><span class="n">Conclusión</span><b>L es NP-completo</b><p>Las dos propiedades juntas. El orden de las partes es el orden de la prueba.</p></div>
+    </div>
+    <p>Aquí L = CLIQUE y el problema conocido es 3-CNF-SAT. El lenguaje que se estudia es</p>
+    <div class="callout"><p><b>CLIQUE</b> = { ⟨G, k⟩ : G es un grafo no dirigido que tiene una clique de tamaño k }</p></div>
+    <p class="hint">Una clique de tamaño k es un conjunto de k vértices en el que cada par está unido por una arista. "Al menos k" y "exactamente k" dan la misma respuesta, porque si hay una clique mayor, quitándole vértices queda una de tamaño k.</p>
+  </section>
+
+  <!-- ============ PARTE 1 ============ -->
+  <section class="blk">
+    <p class="eyebrow">Parte 1</p>
+    <h2>CLIQUE está en NP</h2>
+    <p>Hay que dar dos cosas: qué es el <b>certificado</b> y cómo lo revisa un <b>verificador</b> que corre en tiempo polinomial.</p>
+    <ul>
+      <li><b>Certificado:</b> un conjunto V' de vértices. Quien afirma "sí hay clique" lo entrega.</li>
+      <li><b>Verificador</b>, con entrada ⟨G, k⟩ y V':
+        <ol>
+          <li>Comprobar que |V'| = k.</li>
+          <li>Para cada par de vértices distintos u, v de V', comprobar que (u, v) ∈ E.</li>
+          <li>Aceptar si todas las comprobaciones pasan; rechazar en caso contrario.</li>
+        </ol>
+      </li>
+    </ul>
+    <p><b>Tiempo.</b> Hay k(k−1)/2 pares y cada comprobación toma O(1) con una matriz de adyacencia (O(|V|) con listas). Como k ≤ |V|, el total es O(|V|³) en el peor caso, polinomial en el tamaño de la entrada.</p>
+    <p><b>Correctitud.</b> Si G tiene una clique de tamaño k, ese conjunto es un certificado que el verificador acepta. Si G no la tiene, ningún conjunto de k vértices pasa la comprobación de los pares, así que el verificador siempre rechaza.</p>
+
+    <div class="lab" id="np-lab">
+      <h3>Pruébalo: eres el verificador</h3>
+      <p class="hint">Toca vértices para armar el certificado V'. Las líneas rojas discontinuas marcan las aristas que faltan entre vértices elegidos.</p>
+      <div class="row"><span>Tamaño k pedido:</span>
+        <div class="tabs" id="np-k"></div>
+      </div>
+      <div class="cols">
+        <svg class="g np" id="np-svg" viewBox="0 0 390 240" role="img" aria-label="Grafo de seis vértices formado por dos triángulos unidos"></svg>
+        <div class="stack">
+          <div class="info" id="np-out" aria-live="polite"></div>
+          <div class="row" id="np-pre"></div>
+        </div>
+      </div>
+    </div>
+    <p class="hint">Lo importante: encontrar el certificado puede ser difícil, pero comprobarlo es rápido. Eso es exactamente estar en NP.</p>
+  </section>
+
+  <!-- ============ PARTE 2 ============ -->
+  <section class="blk">
+    <p class="eyebrow">Parte 2</p>
+    <h2>CLIQUE es NP-difícil</h2>
+    <p>Se reduce 3-CNF-SAT a CLIQUE. Una reducción 3-CNF-SAT ≤ₚ CLIQUE es una función f, calculable en tiempo polinomial, que convierte cada fórmula φ en una entrada ⟨G, k⟩ de modo que la respuesta sea la misma.</p>
+    <div class="red">
+      <div><b>φ</b>fórmula 3-CNF</div>
+      <div class="arr" aria-hidden="true"></div>
+      <div><b>f, en tiempo polinomial</b>construye el grafo G y el número k</div>
+      <div class="arr" aria-hidden="true"></div>
+      <div><b>⟨G, k⟩</b>¿G tiene una clique de tamaño k?</div>
+    </div>
+    <p><b>La condición que debe cumplir f:</b> φ es satisfacible si y solo si G tiene una clique de tamaño k.</p>
+
+    <h3>2.1 Qué es 3-CNF-SAT</h3>
+    <p>Una <b>fórmula 3-CNF</b> es una conjunción (∧) de <b>cláusulas</b>. Cada cláusula es una disyunción (∨) de exactamente tres <b>literales</b>, y un literal es una variable (x) o su negación (¬x). Ejemplo, con k = 3 cláusulas:</p>
+    <p class="formula">φ = <span class="cl c1">(x ∨ ¬y ∨ ¬z)</span> ∧ <span class="cl c2">(¬x ∨ y ∨ z)</span> ∧ <span class="cl c3">(x ∨ y ∨ z)</span></p>
+    <p>La pregunta es si existe una asignación de verdadero/falso a las variables que haga verdadera toda la fórmula. Como es una conjunción, <b>cada cláusula</b> debe ser verdadera, y una cláusula es verdadera cuando <b>al menos un literal</b> lo es. Con x = V, y = V, z = F: la primera cláusula es verdadera por x, la segunda por y y la tercera por x (o por y). Esta asignación satisface φ.</p>
+    <p class="hint">Los colores de las cláusulas se mantienen en el grafo de más abajo.</p>
+
+    <h3>2.2 La idea de la construcción</h3>
+    <p>Satisfacer φ es lo mismo que <b>elegir un literal verdadero en cada cláusula</b> sin elegir nunca a la vez x y ¬x. Eso se puede traducir al lenguaje de las cliques, punto por punto:</p>
+    <div class="tw"><table>
+      <thead><tr><th>Lo que pide φ</th><th>Regla del grafo G</th><th>Efecto</th></tr></thead>
+      <tbody>
+        <tr><td>Un literal por cada cláusula</td><td>Un vértice por literal. <b>Sin aristas</b> entre vértices de la misma cláusula. Se pide una clique de tamaño k (el número de cláusulas).</td><td>Una clique de tamaño k no puede tener dos vértices de la misma cláusula, así que tiene exactamente uno por cláusula.</td></tr>
+        <tr><td>Los literales elegidos no se contradicen</td><td><b>Sin arista</b> entre x y ¬x.</td><td>Una clique nunca contiene un literal y su negación.</td></tr>
+        <tr><td>Todos los elegidos son compatibles entre sí</td><td>Arista entre cualquier otro par de cláusulas distintas.</td><td>"Todos compatibles con todos" es la definición de clique.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>2.3 La construcción, dibujada</h3>
+    <p>Dada φ = C₁ ∧ … ∧ C_k, con Cᵣ = (l₁ʳ ∨ l₂ʳ ∨ l₃ʳ), se construye G = (V, E):</p>
+    <ul>
+      <li><b>Vértices:</b> para cada cláusula Cᵣ y cada literal lᵢʳ, un vértice vᵢʳ. Hay 3k vértices.</li>
+      <li><b>Aristas:</b> (vᵢʳ, vⱼˢ) ∈ E si y solo si <b>(a)</b> r ≠ s, es decir, vienen de cláusulas distintas, y <b>(b)</b> lᵢʳ no es la negación de lⱼˢ.</li>
+      <li><b>Tamaño pedido:</b> k, el número de cláusulas.</li>
+    </ul>
+    <p>El laboratorio siguiente usa la fórmula que quieras. Cámbiala, o elige una de las tres preparadas, y mira cómo se arma G. Toca un vértice para ver con quién está unido y por qué no lo está con los demás.</p>
+
+    <div class="lab" id="lab">
+      <h3>Laboratorio de la reducción</h3>
+      <div>
+        <label for="f-input" class="hint" style="display:block;margin-bottom:4px">Fórmula φ (cláusulas separadas por ∧, literales por ∨, negación con ¬ o !). Máximo 6 cláusulas de hasta 3 literales.</label>
+        <textarea id="f-input" spellcheck="false" rows="2"></textarea>
+        <p class="err" id="f-err" aria-live="polite"></p>
+      </div>
+      <div class="row" id="f-pre"></div>
+      <div class="legend" id="legend"></div>
+      <div class="eq" id="eq" aria-live="polite"></div>
+      <div class="tabs" id="modes">
+        <button type="button" data-mode="build" class="on">Construir G</button>
+        <button type="button" data-mode="asg">Asignación → clique (⇒)</button>
+        <button type="button" data-mode="clq">Clique → asignación (⇐)</button>
+      </div>
+      <div class="cols">
+        <div class="stack">
+          <svg class="g" id="svg" viewBox="0 0 600 560" role="img" aria-label="Grafo de la reducción: un grupo de vértices por cláusula"></svg>
+          <div class="info" id="sel" aria-live="polite"></div>
+        </div>
+        <div class="stack" id="panel"></div>
+      </div>
+      <p class="hint" id="stats"></p>
+    </div>
+
+    <h3>2.4 Correctitud: φ es satisfacible ⟺ G tiene una clique de tamaño k</h3>
+    <p>Hay que probar las dos implicaciones. Las dos pestañas del laboratorio muestran cada una con la fórmula que tengas cargada.</p>
+
+    <h3>(⇒) Si φ es satisfacible, entonces G tiene una clique de tamaño k</h3>
+    <ol>
+      <li>Sea una asignación que satisface φ. Entonces cada cláusula Cᵣ tiene al menos un literal verdadero.</li>
+      <li>De cada cláusula se elige <b>un</b> literal verdadero lᵣ y se toma su vértice. Se obtiene un conjunto V' con k vértices, uno por cláusula.</li>
+      <li>Se toman dos vértices cualesquiera de V', de las cláusulas r ≠ s. Se cumple la condición (a) porque r ≠ s. Se cumple (b) porque lᵣ y lₛ son verdaderos con la <b>misma</b> asignación: si uno fuera la negación del otro, uno de los dos sería falso.</li>
+      <li>Por la construcción, hay arista entre esos dos vértices. Como el par era cualquiera, V' es una clique de tamaño k.</li>
+    </ol>
+    <p><button type="button" class="link" data-goto="asg">Verlo en el laboratorio: probar asignaciones</button></p>
+
+    <h3>(⇐) Si G tiene una clique de tamaño k, entonces φ es satisfacible</h3>
+    <ol>
+      <li>Sea V' una clique con |V'| = k.</li>
+      <li>No hay aristas entre vértices de la misma cláusula, así que V' no puede tener dos vértices de una misma cláusula. Hay k cláusulas y k vértices, así que V' tiene <b>exactamente uno</b> por cláusula.</li>
+      <li>Se define la asignación: si el literal x está en V', se pone x = verdadero; si ¬x está en V', se pone x = falso. Está bien definida: si V' tuviera x y ¬x, como todo par de V' está unido por una arista, habría arista entre ellos, pero la construcción no la pone.</li>
+      <li>Las variables que no aparecen en V' toman cualquier valor.</li>
+      <li>Cada cláusula contiene un literal de V', que ahora es verdadero. Entonces todas las cláusulas son verdaderas y φ es satisfacible.</li>
+    </ol>
+    <p><button type="button" class="link" data-goto="clq">Verlo en el laboratorio: buscar la clique y recuperar la asignación</button></p>
+
+    <h3>2.5 La reducción se calcula en tiempo polinomial</h3>
+    <ul>
+      <li>Se crean a lo sumo 3k vértices, uno por literal.</li>
+      <li>Para las aristas se revisan a lo sumo C(3k, 2) ≤ 9k²/2 pares. Cada revisión compara los números de cláusula y, si hacen falta, los dos literales, en tiempo constante.</li>
+      <li>El tamaño de φ es Θ(k), así que construir G toma O(k²), polinomial en |φ|.</li>
+    </ul>
+    <div class="callout"><p id="poly"></p></div>
+
+    <h3>2.6 Por qué esto basta para decir NP-difícil</h3>
+    <p>Sea L cualquier lenguaje de NP. Como 3-CNF-SAT es NP-completo (Cook–Levin prueba que SAT lo es y CLRS prueba SAT ≤ₚ 3-CNF-SAT), se cumple L ≤ₚ 3-CNF-SAT. Como además 3-CNF-SAT ≤ₚ CLIQUE y la composición de dos reducciones polinomiales es polinomial, se cumple L ≤ₚ CLIQUE. Entonces todo problema de NP se reduce a CLIQUE: CLIQUE es NP-difícil.</p>
+  </section>
+
+  <!-- ============ CONCLUSIÓN ============ -->
+  <section class="blk">
+    <h2>Conclusión</h2>
+    <div class="callout ok"><p>CLIQUE ∈ NP (Parte 1) y CLIQUE es NP-difícil (Parte 2). Por lo tanto, <b>CLIQUE es NP-completo.</b> ∎</p></div>
+    <p>Para ver cómo se resuelve en la práctica (backtracking, voraz y verificación), abre <a href="#detector">Detector de cliques</a>.</p>
+    <ul class="sum">
+      <li>Si alguien encontrara un algoritmo polinomial para CLIQUE, resolvería todos los problemas de NP y se probaría P = NP.</li>
+      <li>La cadena que muestra CLRS continúa así: SAT → 3-CNF-SAT → CLIQUE → VERTEX-COVER, usando el grafo complemento para el último paso.</li>
+    </ul>
+
+    <h3>Preguntas que suelen hacer</h3>
+    <details><summary>¿Por qué se reduce 3-CNF-SAT a CLIQUE y no al revés?</summary><p>Porque hay que transformar el problema que ya se sabe difícil en el problema nuevo. Si CLIQUE se pudiera resolver rápido, la reducción permitiría resolver 3-CNF-SAT rápido. Hacerlo al revés no prueba nada sobre CLIQUE.</p></details>
+    <details><summary>¿Por qué la clique pedida es de tamaño k y no mayor?</summary><p>El grafo G se divide en k grupos (las cláusulas) sin aristas dentro de cada grupo, así que ninguna clique puede tener más de k vértices. Por eso "tamaño k" y "al menos k" dan la misma respuesta en estas entradas.</p></details>
+    <details><summary>Si la misma variable aparece en dos cláusulas, ¿cuántos vértices hay?</summary><p>Uno por cada aparición. Por ejemplo, x en C₁ y x en C₃ son dos vértices distintos, y entre ellos sí hay arista, porque están en cláusulas distintas y no se contradicen.</p></details>
+    <details><summary>¿Qué pasa con las variables que no aparecen en la clique?</summary><p>No importan: cada cláusula ya está satisfecha por el literal que sí aparece en la clique. Se les da un valor cualquiera.</p></details>
+    <details><summary>¿Se puede recuperar la asignación a partir de la clique?</summary><p>Sí, y es lo que se hace en la dirección (⇐): los literales de la clique son exactamente los que se ponen verdaderos. La reducción conserva también la solución, no solo la respuesta sí/no.</p></details>
+  </section>
+
+</div>
+  </div>
+
+  <div id="view-ej" hidden>
+<div class="wrap">
+  <h2 class="vt">Detector de cliques</h2>
+  <p class="vtl">Es el mismo problema CLIQUE de la demostración, en su versión de decisión. Elige un problema y prueba backtracking, voraz y verificación, o ingresa el tuyo.</p>
 
   <section class="enun" aria-label="Enunciado del problema">
     <h2>Enunciado</h2>
-    <p class="nom" id="enTitulo"></p>
-    <p id="enTexto"></p>
+    <p class="nom" id="ej-enTitulo"></p>
+    <p id="ej-enTexto"></p>
     <p class="def">Una clique es un grupo de vértices donde todos están conectados con todos. La pregunta de decisión es: ¿existe una clique de tamaño al menos k?</p>
   </section>
 
@@ -128,69 +453,504 @@ svg { width: 100%; height: auto; max-height: 340px; display: block; }
     <section class="card" aria-label="Problema y datos">
       <div>
         <h2>Problema</h2>
-        <label for="sel">Problemas disponibles</label>
-        <select id="sel"></select>
+        <label for="ej-sel">Problemas disponibles</label>
+        <select id="ej-sel"></select>
         <p class="hint">Los marcados con ★ son los que ingresaste en este navegador.</p>
       </div>
       <div>
-        <label for="nombre">Nombre del problema</label>
-        <input type="text" id="nombre" spellcheck="false" placeholder="Ej. Red de proveedores">
+        <label for="ej-nombre">Nombre del problema</label>
+        <input type="text" id="ej-nombre" spellcheck="false" placeholder="Ej. Red de proveedores">
       </div>
       <div>
-        <label for="enunciado">Enunciado</label>
-        <textarea id="enunciado" spellcheck="true" placeholder="Describe el problema con tus palabras. Si lo dejas vacío, se usa uno genérico."></textarea>
+        <label for="ej-enunciado">Enunciado</label>
+        <textarea id="ej-enunciado" spellcheck="true" placeholder="Describe el problema con tus palabras. Si lo dejas vacío, se usa uno genérico."></textarea>
       </div>
       <div>
-        <label for="edges">Transferencias (aristas)</label>
-        <textarea id="edges" spellcheck="false"></textarea>
+        <label for="ej-edges">Transferencias (aristas)</label>
+        <textarea id="ej-edges" spellcheck="false"></textarea>
         <p class="hint">Pares con guion, separados por coma o salto de línea: A-B, C-D. Un nombre solo (F) agrega un vértice sin conexiones.</p>
-        <p class="stats" id="stats"></p>
-        <p class="warn" id="warn" aria-live="polite"></p>
+        <p class="stats" id="ej-stats"></p>
+        <p class="warn" id="ej-warn" aria-live="polite"></p>
       </div>
       <div>
-        <label for="k">Tamaños k a buscar</label>
-        <input type="text" id="k" spellcheck="false" placeholder="3, 4, 5">
+        <label for="ej-k">Tamaños k a buscar</label>
+        <input type="text" id="ej-k" spellcheck="false" placeholder="3, 4, 5">
         <p class="hint">Uno o varios valores de 2 en adelante, separados por coma.</p>
       </div>
       <div>
-        <label for="grupos">Grupos a verificar</label>
-        <textarea id="grupos" spellcheck="false" placeholder="C, D, E"></textarea>
+        <label for="ej-grupos">Grupos a verificar</label>
+        <textarea id="ej-grupos" spellcheck="false" placeholder="C, D, E"></textarea>
         <p class="hint">Un grupo por línea, con los vértices separados por coma o espacio.</p>
       </div>
       <div class="row2">
-        <button type="button" class="small" id="bIngresar">Ingresar problema</button>
-        <button type="button" class="small" id="bNuevo">Nuevo</button>
-        <button type="button" class="small" id="bBorrar">Borrar</button>
+        <button type="button" class="small" id="ej-bIngresar">Ingresar problema</button>
+        <button type="button" class="small" id="ej-bNuevo">Nuevo</button>
+        <button type="button" class="small" id="ej-bBorrar">Borrar</button>
       </div>
-      <p class="hint" id="msg" aria-live="polite">Pulsa Nuevo, escribe tu enunciado y tus datos, y luego Ingresar problema para agregarlo a la lista.</p>
+      <p class="hint" id="ej-msg" aria-live="polite">Pulsa Nuevo, escribe tu enunciado y tus datos, y luego Ingresar problema para agregarlo a la lista.</p>
       <hr>
       <div class="btns">
-        <button type="button" class="algo" id="bBack" aria-pressed="false">Backtracking<small>Exacto: responde SÍ o NO con certeza para cada k</small></button>
-        <button type="button" class="algo" id="bVoraz" aria-pressed="false">Voraz<small>Rápido: puede perder la clique más grande</small></button>
-        <button type="button" class="algo" id="bVer" aria-pressed="false">Verificar grupos<small>Comprueba si cada grupo es clique</small></button>
+        <button type="button" class="algo" id="ej-bBack" aria-pressed="false">Backtracking<small>Exacto: responde SÍ o NO con certeza para cada k</small></button>
+        <button type="button" class="algo" id="ej-bVoraz" aria-pressed="false">Voraz<small>Rápido: puede perder la clique más grande</small></button>
+        <button type="button" class="algo" id="ej-bVer" aria-pressed="false">Verificar grupos<small>Comprueba si cada grupo es clique</small></button>
       </div>
     </section>
 
     <div class="col">
       <section class="card" aria-label="Resultado">
         <h2>Grafo</h2>
-        <svg id="svg" viewBox="0 0 360 300" role="img" aria-label="Grafo de cuentas y transferencias"></svg>
-        <div id="result" class="result" aria-live="polite"><strong>Elige un método</strong><p>Los vértices del grupo encontrado se marcan en naranja.</p></div>
+        <svg id="ej-svg" viewBox="0 0 360 300" role="img" aria-label="Grafo de cuentas y transferencias"></svg>
+        <div id="ej-result" class="result" aria-live="polite"><strong>Elige un método</strong><p>Los vértices del grupo encontrado se marcan en naranja.</p></div>
         <div>
-          <h2 id="runsTitle">Resultados</h2>
-          <div class="runs" id="runs"></div>
-          <p class="hint" id="runsHint"></p>
+          <h2 id="ej-runsTitle">Resultados</h2>
+          <div class="runs" id="ej-runs"></div>
+          <p class="hint" id="ej-runsHint"></p>
         </div>
       </section>
       <section class="card" aria-label="Recorrido">
         <h2>Paso a paso</h2>
-        <div id="trace" class="trace" tabindex="0"><span class="mut">Aquí aparece el recorrido del algoritmo.</span></div>
+        <div id="ej-trace" class="trace" tabindex="0"><span class="mut">Aquí aparece el recorrido del algoritmo.</span></div>
       </section>
     </div>
   </div>
 </div>
+  </div>
+</div>
 
 <script>
+(function () {
+
+/* ===PURE_START=== */
+function parseFormula(text) {
+  const errors = [];
+  const t = String(text).replace(/\band\b/gi, "∧").replace(/&+/g, "∧").replace(/[\n;]+/g, "∧");
+  const clauses = [];
+  t.split("∧").map((s) => s.trim()).filter(Boolean).forEach((p) => {
+    const inner = p.replace(/[()\[\]]/g, " ").trim();
+    const cl = [];
+    inner.split(/∨|\||,|\bor\b|\+/i).map((s) => s.trim()).filter(Boolean).forEach((l) => {
+      const m = l.match(/^([¬~!\-]*)\s*([A-Za-z][A-Za-z0-9_]*)$/);
+      if (!m) { errors.push('No se entiende "' + l + '".'); return; }
+      cl.push({ v: m[2], neg: m[1].length % 2 === 1 });
+    });
+    if (cl.length) clauses.push(cl);
+  });
+  if (!clauses.length) errors.push("Escribe al menos una cláusula, por ejemplo (x ∨ y ∨ z).");
+  if (clauses.length > 6) errors.push("Máximo 6 cláusulas para poder dibujar el grafo.");
+  if (clauses.some((c) => c.length > 3)) errors.push("Cada cláusula admite hasta 3 literales.");
+  const vars = [...new Set(clauses.reduce((a, c) => a.concat(c.map((l) => l.v)), []))];
+  if (vars.length > 8) errors.push("Máximo 8 variables distintas.");
+  return { clauses, vars, errors };
+}
+
+function buildGraph(clauses) {
+  const V = [];
+  clauses.forEach((cl, r) => cl.forEach((l, i) => V.push({ id: r + "." + i, r, i, v: l.v, neg: l.neg, label: (l.neg ? "¬" : "") + l.v })));
+  const ok = [], bad = [];
+  for (let a = 0; a < V.length; a++) {
+    for (let b = a + 1; b < V.length; b++) {
+      if (V[a].r === V[b].r) continue;
+      const contra = V[a].v === V[b].v && V[a].neg !== V[b].neg;
+      (contra ? bad : ok).push([V[a].id, V[b].id]);
+    }
+  }
+  const adj = {};
+  V.forEach((x) => { adj[x.id] = new Set(); });
+  ok.forEach(([a, b]) => { adj[a].add(b); adj[b].add(a); });
+  return { V, ok, bad, adj, k: clauses.length };
+}
+
+function findClique(G, k) {
+  const ids = G.V.map((x) => x.id);
+  function rec(cur, cands) {
+    if (cur.length === k) return cur;
+    if (cur.length + cands.length < k) return null;
+    for (let i = 0; i < cands.length; i++) {
+      const v = cands[i];
+      const nx = cands.slice(i + 1).filter((u) => G.adj[v].has(u));
+      const r = rec(cur.concat(v), nx);
+      if (r) return r;
+    }
+    return null;
+  }
+  return rec([], ids);
+}
+
+function isClique(G, ids) {
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) if (!G.adj[ids[i]].has(ids[j])) return false;
+  return true;
+}
+
+function satCount(clauses, vars) {
+  let count = 0, first = null;
+  for (let m = 0; m < (1 << vars.length); m++) {
+    const asg = {};
+    vars.forEach((v, i) => { asg[v] = !!(m & (1 << i)); });
+    if (clauses.every((cl) => cl.some((l) => asg[l.v] !== l.neg))) { count++; if (!first) first = asg; }
+  }
+  return { count, total: 1 << vars.length, first };
+}
+
+function picksFor(clauses, asg) {
+  const picks = [], fail = [];
+  clauses.forEach((cl, r) => {
+    const i = cl.findIndex((l) => asg[l.v] !== l.neg);
+    if (i < 0) fail.push(r); else picks.push(r + "." + i);
+  });
+  return { picks, fail };
+}
+
+function asgFromClique(G, ids) {
+  const asg = {};
+  ids.forEach((id) => { const v = G.V.find((x) => x.id === id); asg[v.v] = !v.neg; });
+  return asg;
+}
+/* ===PURE_END=== */
+
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const sub = (n) => String(n).replace(/\d/g, (d) => "₀₁₂₃₄₅₆₇₈₉"[d]);
+const cn = (r) => "c" + ((r % 6) + 1);
+const SVGNS = "http://www.w3.org/2000/svg";
+
+/* ======================= PARTE 1: verificador ======================= */
+const NPV = { A: [50, 50], B: [50, 190], C: [140, 120], D: [250, 120], E: [340, 50], F: [340, 190] };
+const NPE = [["A", "B"], ["A", "C"], ["B", "C"], ["C", "D"], ["D", "E"], ["D", "F"], ["E", "F"]];
+let npSel = new Set(["A", "B", "C"]), npK = 3;
+const npHas = (a, b) => NPE.some((e) => (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a));
+
+function renderNP() {
+  const sel = [...npSel].sort();
+  const pairs = [];
+  for (let i = 0; i < sel.length; i++) for (let j = i + 1; j < sel.length; j++) pairs.push([sel[i], sel[j], npHas(sel[i], sel[j])]);
+  const pairsOk = pairs.every((p) => p[2]);
+  const sizeOk = sel.length === npK;
+  const accept = sizeOk && pairsOk;
+
+  let s = "";
+  NPE.forEach(([a, b]) => {
+    const hit = npSel.has(a) && npSel.has(b);
+    s += `<line class="ed${hit ? " hit" : ""}" x1="${NPV[a][0]}" y1="${NPV[a][1]}" x2="${NPV[b][0]}" y2="${NPV[b][1]}"/>`;
+  });
+  pairs.filter((p) => !p[2]).forEach((p) => {
+    s += `<line class="ed bad" x1="${NPV[p[0]][0]}" y1="${NPV[p[0]][1]}" x2="${NPV[p[1]][0]}" y2="${NPV[p[1]][1]}"/>`;
+  });
+  Object.keys(NPV).forEach((v) => {
+    const on = npSel.has(v);
+    s += `<g class="nd${on ? " cert" : ""}" data-v="${v}" tabindex="0" role="button" aria-pressed="${on}" aria-label="Vértice ${v}"><circle cx="${NPV[v][0]}" cy="${NPV[v][1]}" r="19" style="${on ? "" : "stroke:var(--c6)"}"/><text x="${NPV[v][0]}" y="${NPV[v][1]}">${v}</text></g>`;
+  });
+  $("np-svg").innerHTML = s;
+
+  const chips = pairs.length
+    ? pairs.map((p) => `<span class="chip ${p[2] ? "ok" : "no"}">${p[0]}–${p[1]} ${p[2] ? "✓" : "✗"}</span>`).join(" ")
+    : '<span class="hint">Elige al menos dos vértices para ver los pares.</span>';
+  $("np-out").innerHTML =
+    `<p><b>Certificado</b> V' = {${sel.join(", ") || "vacío"}}</p>` +
+    `<p><b>Comprobación 1:</b> |V'| = k → ${sel.length} ${sizeOk ? "=" : "≠"} ${npK} <span class="pill ${sizeOk ? "yes" : "no"}">${sizeOk ? "pasa" : "falla"}</span></p>` +
+    `<p><b>Comprobación 2:</b> cada par tiene arista (${pairs.length} pares = k(k−1)/2 con |V'| = ${sel.length})</p>` +
+    `<div class="chips">${chips}</div>` +
+    `<p><b>El verificador</b> <span class="pill ${accept ? "yes" : "no"}">${accept ? "acepta" : "rechaza"}</span></p>`;
+}
+
+function renderNPControls() {
+  $("np-k").innerHTML = [2, 3, 4].map((k) => `<button type="button" data-k="${k}" class="${k === npK ? "on" : ""}">k = ${k}</button>`).join("");
+  const sets = [["A, B, C", ["A", "B", "C"]], ["D, E, F", ["D", "E", "F"]], ["C, D, E", ["C", "D", "E"]], ["A, B, C, D", ["A", "B", "C", "D"]]];
+  $("np-pre").innerHTML = sets.map((x, i) => `<button type="button" data-set="${i}">Probar {${x[0]}}</button>`).join("");
+  $("np-pre").dataset.sets = JSON.stringify(sets.map((x) => x[1]));
+}
+$("np-k").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-k]");
+  if (!b) return;
+  npK = +b.dataset.k;
+  renderNPControls(); renderNP();
+});
+$("np-pre").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-set]");
+  if (!b) return;
+  npSel = new Set(JSON.parse($("np-pre").dataset.sets)[+b.dataset.set]);
+  renderNP();
+});
+function npToggle(v) { if (npSel.has(v)) npSel.delete(v); else npSel.add(v); renderNP(); }
+$("np-svg").addEventListener("click", (e) => { const g = e.target.closest(".nd"); if (g) npToggle(g.dataset.v); });
+$("np-svg").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const g = e.target.closest(".nd");
+  if (g) { e.preventDefault(); const v = g.dataset.v; npToggle(v); const n = $("np-svg").querySelector(`[data-v="${v}"]`); if (n) n.focus(); }
+});
+
+/* ======================= PARTE 2: laboratorio ======================= */
+const PRESETS = [
+  { n: "Satisfacible (el del texto)", t: "(x ∨ ¬y ∨ ¬z) ∧ (¬x ∨ y ∨ z) ∧ (x ∨ y ∨ z)", a: { x: true, y: true, z: false } },
+  { n: "No satisfacible", t: "(x ∨ y) ∧ (x ∨ ¬y) ∧ (¬x ∨ y) ∧ (¬x ∨ ¬y)" },
+  { n: "Cuatro cláusulas", t: "(a ∨ b ∨ c) ∧ (¬a ∨ b ∨ ¬c) ∧ (¬b ∨ c ∨ a) ∧ (¬a ∨ ¬b ∨ ¬c)", a: { a: true, b: true, c: false } }
+];
+
+let F = null, GR = null, EQ = null;
+let mode = "build", stage = 3, ASG = {}, SEL = null, FOUND = null;
+
+function setFormula(text, asg) {
+  const p = parseFormula(text);
+  if (p.errors.length) { $("f-err").textContent = p.errors.join(" "); return false; }
+  $("f-err").textContent = "";
+  F = p;
+  GR = buildGraph(p.clauses);
+  const old = ASG;
+  ASG = {};
+  p.vars.forEach((v) => { ASG[v] = asg && v in asg ? asg[v] : (v in old ? old[v] : true); });
+  EQ = { s: satCount(p.clauses, p.vars), c: findClique(GR, GR.k) };
+  SEL = null;
+  FOUND = null;
+  renderAll();
+  return true;
+}
+
+function layout(G) {
+  const k = G.k, cx = 300, cy = 280, R = k <= 3 ? 150 : 175, cen = [], pos = {}, labs = [];
+  for (let r = 0; r < k; r++) {
+    if (k === 1) cen.push([cx, cy, -Math.PI / 2]);
+    else if (k === 2) cen.push([cx + (r ? 150 : -150), cy, -Math.PI / 2]);
+    else { const a = -Math.PI / 2 + (2 * Math.PI * r) / k; cen.push([cx + R * Math.cos(a), cy + R * Math.sin(a), a]); }
+  }
+  cen.forEach(([x, y, a]) => { labs.push(k >= 3 ? [x + 90 * Math.cos(a), y + 90 * Math.sin(a)] : [x, y - 90]); });
+  const cnt = Array(k).fill(0);
+  G.V.forEach((v) => { cnt[v.r]++; });
+  G.V.forEach((v) => {
+    const n = cnt[v.r], [x, y] = cen[v.r];
+    let dx = 0, dy = 0;
+    if (n === 2) dx = v.i ? 33 : -33;
+    else if (n === 3) { const a = -Math.PI / 2 + (2 * Math.PI * v.i) / 3; dx = 40 * Math.cos(a); dy = 40 * Math.sin(a); }
+    pos[v.id] = [x + dx, y + dy];
+  });
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  cen.forEach(([x, y]) => { x0 = Math.min(x0, x - 70); x1 = Math.max(x1, x + 70); y0 = Math.min(y0, y - 70); y1 = Math.max(y1, y + 70); });
+  labs.forEach(([x, y]) => { x0 = Math.min(x0, x - 22); x1 = Math.max(x1, x + 22); y0 = Math.min(y0, y - 18); y1 = Math.max(y1, y + 18); });
+  const vb = `${Math.round(x0 - 12)} ${Math.round(y0 - 12)} ${Math.round(x1 - x0 + 24)} ${Math.round(y1 - y0 + 24)}`;
+  return { cen, pos, labs, vb };
+}
+
+function currentHit() {
+  if (mode === "asg") { const r = picksFor(F.clauses, ASG); return r.fail.length ? [] : r.picks; }
+  if (mode === "clq") return FOUND && FOUND.clique ? FOUND.clique : [];
+  return [];
+}
+
+function vref(v) { return `${v.label} (C${sub(v.r + 1)})`; }
+
+function renderLegend() {
+  $("legend").innerHTML = F.clauses.map((cl, r) => `<span class="cl ${cn(r)}">C${sub(r + 1)} = (${cl.map((l) => (l.neg ? "¬" : "") + l.v).join(" ∨ ")})</span>`).join("");
+}
+
+function renderEq() {
+  const { s, c } = EQ;
+  const same = (s.count > 0) === !!c;
+  $("eq").innerHTML =
+    `<span>φ <span class="pill ${s.count ? "yes" : "no"}">${s.count ? "es satisfacible" : "no es satisfacible"}</span> (${s.count} de ${s.total} asignaciones)</span>` +
+    `<span>⟺</span>` +
+    `<span>G <span class="pill ${c ? "yes" : "no"}">${c ? "tiene" : "no tiene"}</span> una clique de tamaño ${GR.k}</span>` +
+    `<span class="pill ${same ? "yes" : "no"}">${same ? "coinciden" : "no coinciden"}</span>`;
+}
+
+function renderStats() {
+  const n = GR.V.length, m = GR.ok.length;
+  $("stats").textContent = `G tiene ${n} vértices y ${m} aristas; se pide una clique de tamaño k = ${GR.k}. Con las reglas (a) y (b) se descartaron ${GR.bad.length} aristas entre un literal y su negación.`;
+  const pairs = (n * (n - 1)) / 2;
+  $("poly").innerHTML = `Con la fórmula del laboratorio: k = <span class="num">${GR.k}</span> cláusulas, <span class="num">${n}</span> vértices, <span class="num">${pairs}</span> pares revisados (C(${n}, 2)) y <span class="num">${m}</span> aristas. Con k cláusulas de 3 literales serían 3k vértices y a lo sumo 9k²/2 pares.`;
+}
+
+function renderGraph() {
+  const G = GR, P = layout(G);
+  const st = mode === "build" ? stage : 3;
+  const hit = new Set(currentHit());
+  const byId = {};
+  G.V.forEach((v) => { byId[v.id] = v; });
+  let s = "";
+  P.cen.forEach(([x, y], r) => {
+    s += `<g class="${cn(r)}"><circle class="clu" cx="${x}" cy="${y}" r="68"/><text class="clab" x="${P.labs[r][0]}" y="${P.labs[r][1]}">C${sub(r + 1)}</text></g>`;
+  });
+
+  const list = [];
+  if (st >= 2) G.ok.forEach((e) => list.push({ e, t: "ok" }));
+  if (st === 2) G.bad.forEach((e) => list.push({ e, t: "bad" }));
+  const nb = new Set();
+  if (SEL) list.forEach(({ e }) => { if (e[0] === SEL) nb.add(e[1]); else if (e[1] === SEL) nb.add(e[0]); });
+  const line = (e, cls) => `<line class="ed ${cls}" x1="${P.pos[e[0]][0]}" y1="${P.pos[e[0]][1]}" x2="${P.pos[e[1]][0]}" y2="${P.pos[e[1]][1]}"/>`;
+  const isHit = (e) => hit.has(e[0]) && hit.has(e[1]);
+  list.filter((x) => !isHit(x.e)).forEach(({ e, t }) => {
+    let cls = t === "bad" ? "bad" : "";
+    if (SEL) cls += e[0] === SEL || e[1] === SEL ? " inc" : " dim";
+    else if (hit.size) cls += " faint";
+    s += line(e, cls);
+  });
+  list.filter((x) => isHit(x.e)).forEach(({ e }) => { s += line(e, "hit"); });
+
+  G.V.forEach((v) => {
+    const h = hit.has(v.id), sl = SEL === v.id;
+    const dim = SEL && !sl && !nb.has(v.id);
+    const cls = "nd" + (h ? " hit" : "") + (sl ? " sel" : "") + (dim ? " dim" : "");
+    const style = h || sl ? "" : `stroke:var(--${cn(v.r)})`;
+    s += `<g class="${cls}" data-id="${v.id}" tabindex="0" role="button" aria-pressed="${sl}" aria-label="Vértice ${esc(v.label)}, cláusula ${v.r + 1}"><circle cx="${P.pos[v.id][0]}" cy="${P.pos[v.id][1]}" r="21" style="${style}"/><text x="${P.pos[v.id][0]}" y="${P.pos[v.id][1]}">${esc(v.label)}</text></g>`;
+  });
+  $("svg").setAttribute("viewBox", P.vb);
+  $("svg").innerHTML = s;
+}
+
+function renderSel() {
+  if (!SEL) { $("sel").innerHTML = '<p class="hint">Toca un vértice para ver con cuáles está unido y por qué no lo está con los demás.</p>'; return; }
+  const G = GR, v = G.V.find((x) => x.id === SEL);
+  const joined = [], same = [], contra = [];
+  G.V.forEach((u) => {
+    if (u.id === v.id) return;
+    if (u.r === v.r) same.push(vref(u));
+    else if (G.adj[v.id].has(u.id)) joined.push(vref(u));
+    else contra.push(vref(u));
+  });
+  $("sel").innerHTML =
+    `<p><b>Vértice ${esc(vref(v))}</b></p>` +
+    `<p>Unido con ${joined.length}: ${esc(joined.join(", ") || "ninguno")}.</p>` +
+    `<p>Sin arista, misma cláusula (regla a): ${esc(same.join(", ") || "ninguno")}.</p>` +
+    `<p>Sin arista, literal contradictorio (regla b): ${esc(contra.join(", ") || "ninguno")}.</p>` +
+    `<p><button type="button" class="link" data-act="unsel">Quitar selección</button></p>`;
+}
+
+function litHtml(l, asg) {
+  const t = asg[l.v] !== l.neg;
+  return `<span class="lit ${t ? "t" : "f"}">${l.neg ? "¬" : ""}${esc(l.v)}</span>`;
+}
+
+function renderPanel() {
+  const p = $("panel");
+  if (mode === "build") {
+    const n = GR.V.length;
+    const txt = [
+      `<b>Paso 1.</b> Un vértice por cada literal de cada cláusula. Con ${GR.k} cláusulas hay ${n} vértices. Cada grupo de color es una cláusula.`,
+      `<b>Paso 2.</b> Se unen con una arista los vértices de cláusulas distintas. Dentro de un grupo no hay aristas, así que una clique nunca toma dos literales de la misma cláusula. Las líneas rojas discontinuas unen un literal con su negación.`,
+      `<b>Paso 3.</b> Se quitan las aristas rojas. Lo que queda es G. Si hay k vértices todos unidos entre sí, tienen un vértice por cláusula y ningún par contradictorio. Se pide una clique de tamaño k = ${GR.k}.`
+    ][stage - 1];
+    p.innerHTML =
+      `<div class="tabs">${["Vértices", "Unir cláusulas", "Quitar contradicciones"].map((t, i) => `<button type="button" data-act="stage:${i + 1}" class="${stage === i + 1 ? "on" : ""}">${i + 1}. ${t}</button>`).join("")}</div>` +
+      `<p>${txt}</p>` +
+      `<p class="hint"><span class="key"></span>arista de G &nbsp; <span class="key bad"></span>arista eliminada</p>`;
+    return;
+  }
+  if (mode === "asg") {
+    const r = picksFor(F.clauses, ASG);
+    const rows = F.clauses.map((cl, r0) => {
+      const idx = cl.findIndex((l) => ASG[l.v] !== l.neg);
+      return `<div class="crow"><span class="cl ${cn(r0)}">C${sub(r0 + 1)}</span>${cl.map((l) => litHtml(l, ASG)).join(" ∨ ")}<span class="res ${idx < 0 ? "no" : "ok"}">${idx < 0 ? "✗ ningún literal verdadero" : "✓ se elige " + esc(F.clauses[r0][idx].v.length ? (F.clauses[r0][idx].neg ? "¬" : "") + F.clauses[r0][idx].v : "")}</span></div>`;
+    }).join("");
+    let sum;
+    if (!r.fail.length) {
+      const ok = isClique(GR, r.picks);
+      sum = `<div class="callout ok"><p>Se eligió un literal verdadero por cláusula: ${esc(r.picks.map((id) => vref(GR.V.find((x) => x.id === id))).join(", "))}. Son ${r.picks.length} vértices de cláusulas distintas y sin contradicciones, así que ${ok ? "los " + (r.picks.length * (r.picks.length - 1)) / 2 + " pares tienen arista" : "están unidos"}: forman una <b>clique de tamaño ${GR.k}</b>.</p></div>`;
+    } else {
+      sum = `<div class="callout"><p>Con esta asignación ${r.fail.length > 1 ? "las cláusulas " : "la cláusula "}${r.fail.map((x) => "C" + sub(x + 1)).join(", ")} no ${r.fail.length > 1 ? "tienen" : "tiene"} ningún literal verdadero, así que no hay vértice que elegir en ${r.fail.length > 1 ? "esos grupos" : "ese grupo"}. Esta asignación no produce una clique de tamaño ${GR.k}.</p></div>`;
+    }
+    p.innerHTML =
+      `<p>Da un valor a cada variable. En cada cláusula se elige un literal verdadero (el primero que lo sea).</p>` +
+      `<div class="vars">${F.vars.map((v) => `<button type="button" data-act="var:${esc(v)}" class="${ASG[v] ? "on" : ""}">${esc(v)} = ${ASG[v] ? "V" : "F"}</button>`).join("")}</div>` +
+      `<div>${rows}</div>${sum}` +
+      `<div class="row"><button type="button" data-act="usesat" ${EQ.s.first ? "" : "disabled"}>Usar una asignación que satisface φ</button></div>` +
+      `<p class="hint">${EQ.s.count} de ${EQ.s.total} asignaciones satisfacen φ.</p>`;
+    return;
+  }
+  // mode clq
+  let body;
+  if (!FOUND) {
+    body = `<p class="hint">Pulsa el botón. Se buscan k = ${GR.k} vértices unidos todos con todos.</p>`;
+  } else if (FOUND.clique) {
+    const asg = asgFromClique(GR, FOUND.clique);
+    const full = {};
+    F.vars.forEach((v) => { full[v] = v in asg ? asg[v] : false; });
+    const rows = F.clauses.map((cl, r0) => {
+      const idx = cl.findIndex((l) => full[l.v] !== l.neg);
+      return `<div class="crow"><span class="cl ${cn(r0)}">C${sub(r0 + 1)}</span>${cl.map((l) => litHtml(l, full)).join(" ∨ ")}<span class="res ${idx < 0 ? "no" : "ok"}">${idx < 0 ? "✗" : "✓"}</span></div>`;
+    }).join("");
+    body =
+      `<div class="callout ok"><p>Clique encontrada: ${esc(FOUND.clique.map((id) => vref(GR.V.find((x) => x.id === id))).join(", "))}. Tiene exactamente un vértice por cláusula.</p></div>` +
+      `<p><b>Asignación que se obtiene:</b> los literales de la clique se hacen verdaderos.</p>` +
+      `<div class="chips">${F.vars.map((v) => `<span class="chip">${esc(v)} = ${v in asg ? (asg[v] ? "V" : "F") : "libre"}</span>`).join("")}</div>` +
+      `<p class="hint">Las variables "libre" toman un valor cualquiera; aquí se usó F.</p>` +
+      `<div>${rows}</div>`;
+  } else {
+    body = `<div class="callout"><p>No existe ninguna clique de tamaño ${GR.k} en G. Por la dirección (⇒), si φ tuviera una asignación que la satisface, G tendría esa clique. Entonces φ no es satisfacible: se probaron las ${EQ.s.total} asignaciones y ninguna cumple todas las cláusulas.</p></div>`;
+  }
+  p.innerHTML = `<p>Busca una clique de tamaño k en G y recupera de ella una asignación que satisface φ.</p><div class="row"><button type="button" class="act" data-act="find">Buscar clique de tamaño ${GR.k}</button></div>${body}`;
+}
+
+function renderModes() {
+  document.querySelectorAll("#modes button").forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
+}
+
+function renderAll() {
+  renderLegend(); renderEq(); renderStats(); renderGraph(); renderSel(); renderPanel(); renderModes();
+}
+
+$("svg").addEventListener("click", (e) => {
+  const g = e.target.closest(".nd");
+  if (!g) return;
+  SEL = SEL === g.dataset.id ? null : g.dataset.id;
+  renderGraph(); renderSel();
+});
+$("svg").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const g = e.target.closest(".nd");
+  if (!g) return;
+  e.preventDefault();
+  const id = g.dataset.id;
+  SEL = SEL === id ? null : id;
+  renderGraph(); renderSel();
+  const n = $("svg").querySelector(`[data-id="${id}"]`);
+  if (n) n.focus();
+});
+$("sel").addEventListener("click", (e) => { if (e.target.closest('[data-act="unsel"]')) { SEL = null; renderGraph(); renderSel(); } });
+
+$("panel").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  const i = b.dataset.act.indexOf(":");
+  const a = i < 0 ? b.dataset.act : b.dataset.act.slice(0, i);
+  const arg = i < 0 ? "" : b.dataset.act.slice(i + 1);
+  if (a === "stage") stage = +arg;
+  else if (a === "var") ASG[arg] = !ASG[arg];
+  else if (a === "usesat") { if (EQ.s.first) ASG = Object.assign({}, EQ.s.first); }
+  else if (a === "find") FOUND = { clique: findClique(GR, GR.k) };
+  renderGraph(); renderPanel();
+});
+
+$("modes").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-mode]");
+  if (!b) return;
+  mode = b.dataset.mode;
+  renderAll();
+});
+
+document.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => {
+  mode = b.dataset.goto;
+  renderAll();
+  $("lab").scrollIntoView({ behavior: "smooth", block: "start" });
+}));
+
+$("f-input").addEventListener("input", () => setFormula($("f-input").value));
+$("f-pre").innerHTML = PRESETS.map((p, i) => `<button type="button" data-p="${i}">${esc(p.n)}</button>`).join("");
+$("f-pre").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-p]");
+  if (!b) return;
+  const p = PRESETS[+b.dataset.p];
+  $("f-input").value = p.t;
+  setFormula(p.t, p.a);
+});
+
+/* ---------- arranque ---------- */
+renderNPControls();
+renderNP();
+$("f-input").value = PRESETS[0].t;
+setFormula(PRESETS[0].t, PRESETS[0].a);
+
+})();
+</script>
+<script>
+(function () {
+
 /* ===PURE_START=== */
 function mulberry32(a) {
   return function () {
@@ -353,10 +1113,10 @@ const CACHE = {};
 function esc(t) {
   return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 }
-function setMsg(t) { $("msg").textContent = t; }
+function setMsg(t) { $("ej-msg").textContent = t; }
 
 function setActive(id) {
-  ["bBack", "bVoraz", "bVer"].forEach((b) => {
+  ["ej-bBack", "ej-bVoraz", "ej-bVer"].forEach((b) => {
     const on = b === id;
     $(b).classList.toggle("active", on);
     $(b).setAttribute("aria-pressed", String(on));
@@ -365,7 +1125,7 @@ function setActive(id) {
 
 /* ---------- enunciado ---------- */
 function enunciadoTexto() {
-  const t = $("enunciado").value.trim();
+  const t = $("ej-enunciado").value.trim();
   if (t) return t;
   const { n, m } = STATS;
   return n
@@ -373,11 +1133,11 @@ function enunciadoTexto() {
     : "Escribe las aristas del problema y, si quieres, su enunciado.";
 }
 function updateEnunciado() {
-  $("enTitulo").textContent = $("nombre").value.trim() || "Problema sin nombre";
-  $("enTexto").textContent = enunciadoTexto();
+  $("ej-enTitulo").textContent = $("ej-nombre").value.trim() || "Problema sin nombre";
+  $("ej-enTexto").textContent = enunciadoTexto();
 }
-$("nombre").addEventListener("input", updateEnunciado);
-$("enunciado").addEventListener("input", updateEnunciado);
+$("ej-nombre").addEventListener("input", updateEnunciado);
+$("ej-enunciado").addEventListener("input", updateEnunciado);
 
 /* ---------- problemas ingresados ---------- */
 function loadCustom() {
@@ -394,24 +1154,24 @@ function isBuiltin(name) { return BUILTIN.some((p) => p.name === name); }
 
 function refreshSelect(selected) {
   const all = allProblems();
-  $("sel").innerHTML = all.map((p, i) => `<option value="${esc(p.name)}">${i < BUILTIN.length ? "" : "★ "}${esc(p.name)}</option>`).join("");
-  if (selected !== undefined) $("sel").value = selected;
-  $("bBorrar").disabled = isBuiltin($("sel").value);
+  $("ej-sel").innerHTML = all.map((p, i) => `<option value="${esc(p.name)}">${i < BUILTIN.length ? "" : "★ "}${esc(p.name)}</option>`).join("");
+  if (selected !== undefined) $("ej-sel").value = selected;
+  $("ej-bBorrar").disabled = isBuiltin($("ej-sel").value);
 }
 
 function clearOutput() {
   RUNS = [];
   HIT = new Set();
   setActive(null);
-  $("runs").innerHTML = "";
-  $("runsHint").textContent = "";
-  $("runsTitle").textContent = "Resultados";
-  $("trace").innerHTML = '<span class="mut">Aquí aparece el recorrido del algoritmo.</span>';
+  $("ej-runs").innerHTML = "";
+  $("ej-runsHint").textContent = "";
+  $("ej-runsTitle").textContent = "Resultados";
+  $("ej-trace").innerHTML = '<span class="mut">Aquí aparece el recorrido del algoritmo.</span>';
   showResult("", "Elige un método", "Los vértices del grupo encontrado se marcan en naranja.");
 }
 
 function setLocked(on) {
-  ["nombre", "enunciado", "edges"].forEach((id) => { $(id).readOnly = on; });
+  ["ej-nombre", "ej-enunciado", "ej-edges"].forEach((id) => { $(id).readOnly = on; });
 }
 
 function loadProblem(name) {
@@ -422,63 +1182,63 @@ function loadProblem(name) {
     const b = CACHE[name];
     BIG = b;
     const swapped = b.ring.slice(0, -1).concat(b.decoy[0]);
-    $("edges").value = `Problema generado: ${p.gen.users} usuarios y ${b.m} transferencias. La lista no se muestra por su tamaño. Para escribir tus propias aristas pulsa Nuevo.`;
-    $("enunciado").value = (p.enunciado || "").replace("{n}", p.gen.users).replace("{m}", b.m);
-    $("grupos").value = [b.ring.join(", "), swapped.join(", "), b.decoy.join(", ")].join("\n");
+    $("ej-edges").value = `Problema generado: ${p.gen.users} usuarios y ${b.m} transferencias. La lista no se muestra por su tamaño. Para escribir tus propias aristas pulsa Nuevo.`;
+    $("ej-enunciado").value = (p.enunciado || "").replace("{n}", p.gen.users).replace("{m}", b.m);
+    $("ej-grupos").value = [b.ring.join(", "), swapped.join(", "), b.decoy.join(", ")].join("\n");
     setLocked(true);
   } else {
     BIG = null;
-    $("edges").value = p.edges || "";
-    $("enunciado").value = p.enunciado || "";
-    $("grupos").value = p.grupos || "";
+    $("ej-edges").value = p.edges || "";
+    $("ej-enunciado").value = p.enunciado || "";
+    $("ej-grupos").value = p.grupos || "";
     setLocked(false);
   }
-  $("nombre").value = p.name;
-  $("k").value = p.k || "";
-  $("bBorrar").disabled = isBuiltin(name);
+  $("ej-nombre").value = p.name;
+  $("ej-k").value = p.k || "";
+  $("ej-bBorrar").disabled = isBuiltin(name);
   setMsg("");
   clearOutput();
   prepare();
   draw();
 }
 
-$("sel").onchange = () => loadProblem($("sel").value);
+$("ej-sel").onchange = () => loadProblem($("ej-sel").value);
 
-$("bNuevo").onclick = () => {
+$("ej-bNuevo").onclick = () => {
   BIG = null;
   setLocked(false);
-  $("nombre").value = "";
-  $("enunciado").value = "";
-  $("edges").value = "";
-  $("k").value = "3";
-  $("grupos").value = "";
+  $("ej-nombre").value = "";
+  $("ej-enunciado").value = "";
+  $("ej-edges").value = "";
+  $("ej-k").value = "3";
+  $("ej-grupos").value = "";
   setMsg("Problema vacío. Escribe nombre, enunciado y aristas, y pulsa Ingresar problema.");
   clearOutput();
   prepare();
   draw();
-  $("nombre").focus();
+  $("ej-nombre").focus();
 };
 
-$("bIngresar").onclick = () => {
+$("ej-bIngresar").onclick = () => {
   if (BIG) { setMsg("Este problema es generado y no se puede modificar. Pulsa Nuevo para ingresar el tuyo."); return; }
-  let name = $("nombre").value.trim();
+  let name = $("ej-nombre").value.trim();
   if (!name) { setMsg("Escribe un nombre para el problema."); return; }
   if (!Object.keys(readGraph().g).length) { setMsg("Escribe al menos una arista, por ejemplo A-B."); return; }
   if (isBuiltin(name)) name += " (copia)";
   const custom = loadCustom();
-  const item = { name, enunciado: $("enunciado").value, edges: $("edges").value, k: $("k").value, grupos: $("grupos").value };
+  const item = { name, enunciado: $("ej-enunciado").value, edges: $("ej-edges").value, k: $("ej-k").value, grupos: $("ej-grupos").value };
   const i = custom.findIndex((p) => p.name === name);
   if (i >= 0) custom[i] = item; else custom.push(item);
   const ok = saveCustom(custom);
   refreshSelect(name);
-  $("nombre").value = name;
+  $("ej-nombre").value = name;
   prepare();
   draw();
   setMsg(ok ? `Problema ingresado: ${name}. Ya aparece en la lista; ahora elige un algoritmo.` : "Problema ingresado, pero este navegador no permite recordarlo después de cerrar la página.");
 };
 
-$("bBorrar").onclick = () => {
-  const name = $("sel").value;
+$("ej-bBorrar").onclick = () => {
+  const name = $("ej-sel").value;
   if (isBuiltin(name)) return;
   saveCustom(loadCustom().filter((p) => p.name !== name));
   refreshSelect(BUILTIN[0].name);
@@ -489,7 +1249,7 @@ $("bBorrar").onclick = () => {
 /* ---------- lectura de datos ---------- */
 function readGraph() {
   const g = {}, ign = [];
-  $("edges").value.split(/[\n,;]+/).forEach((p) => {
+  $("ej-edges").value.split(/[\n,;]+/).forEach((p) => {
     const s = p.trim();
     if (!s) return;
     const m = s.match(/^([\p{L}\p{N}_]+)\s*[-–]\s*([\p{L}\p{N}_]+)$/u);
@@ -507,12 +1267,12 @@ function readGraph() {
 }
 
 function readKs() {
-  const ks = $("k").value.split(/[\s,;]+/).filter(Boolean).map(Number).filter((n) => Number.isInteger(n) && n >= 2);
+  const ks = $("ej-k").value.split(/[\s,;]+/).filter(Boolean).map(Number).filter((n) => Number.isInteger(n) && n >= 2);
   return [...new Set(ks)].sort((a, b) => a - b).slice(0, 8);
 }
 
 function readGroups() {
-  return $("grupos").value.split("\n").map((l) => [...new Set(l.split(/[\s,;]+/).filter(Boolean).map((x) => x.toUpperCase()))]).filter((a) => a.length);
+  return $("ej-grupos").value.split("\n").map((l) => [...new Set(l.split(/[\s,;]+/).filter(Boolean).map((x) => x.toUpperCase()))]).filter((a) => a.length);
 }
 
 function prepare() {
@@ -520,13 +1280,13 @@ function prepare() {
   if (BIG) G = BIG.g;
   else { const r = readGraph(); G = r.g; ign = r.ign; }
   HIT = new Set();
-  $("warn").textContent = ign.length ? `Se ignoró: ${ign.join(", ")}. Usa el formato A-B.` : "";
+  $("ej-warn").textContent = ign.length ? `Se ignoró: ${ign.join(", ")}. Usa el formato A-B.` : "";
   const n = Object.keys(G).length;
   let m = 0;
   for (const v in G) m += G[v].size;
   m /= 2;
   STATS = { n, m };
-  $("stats").textContent = n ? `${n} vértices · ${m} aristas` : "";
+  $("ej-stats").textContent = n ? `${n} vértices · ${m} aristas` : "";
   updateEnunciado();
   return n;
 }
@@ -559,13 +1319,13 @@ function draw() {
     const hit = HIT.has(v) ? " hit" : "";
     s += `<circle class="node${hit}" cx="${pos[v][0]}" cy="${pos[v][1]}" r="${nr}"/><text class="lbl" style="font-size:${fs}px" x="${pos[v][0]}" y="${pos[v][1]}">${esc(v)}</text>`;
   });
-  $("svg").innerHTML = s;
+  $("ej-svg").innerHTML = s;
 }
 
 function drawBig(n) {
   const core = [...HIT].filter((v) => G[v]).sort();
   if (!core.length) {
-    $("svg").innerHTML =
+    $("ej-svg").innerHTML =
       `<text class="note" x="180" y="135" text-anchor="middle">Grafo de ${n} vértices:</text>` +
       `<text class="note" x="180" y="158" text-anchor="middle">demasiado grande para dibujarlo.</text>` +
       `<text class="note" x="180" y="181" text-anchor="middle">Al encontrar un grupo se muestra aquí.</text>`;
@@ -588,19 +1348,19 @@ function drawBig(n) {
     s += `<circle class="node hit" cx="${pos[v][0]}" cy="${pos[v][1]}" r="19"/><text class="lbl" style="font-size:9.5px" x="${pos[v][0]}" y="${pos[v][1]}">${esc(v)}</text>`;
   });
   s += `<text class="cap" x="180" y="294">Grupo de ${core.length} y ${outer.length} de sus ${ngh.size} vecinos (el resto de los ${n} vértices no se dibuja)</text>`;
-  $("svg").innerHTML = s;
+  $("ej-svg").innerHTML = s;
 }
 
 function showResult(kind, title, text) {
-  const r = $("result");
+  const r = $("ej-result");
   r.className = "result " + kind;
   r.innerHTML = `<strong>${esc(title)}</strong><p>${esc(text)}</p>`;
 }
 
 function showTrace(lines, extra) {
   const html = lines.map((l) => `<span class="${l.c}">${"  ".repeat(l.d)}${esc(l.t)}</span>`).join("\n");
-  $("trace").innerHTML = html + (extra ? `\n<span class="mut">${esc(extra)}</span>` : "");
-  $("trace").scrollTop = 0;
+  $("ej-trace").innerHTML = html + (extra ? `\n<span class="mut">${esc(extra)}</span>` : "");
+  $("ej-trace").scrollTop = 0;
 }
 
 function selectRun(i) {
@@ -610,18 +1370,18 @@ function selectRun(i) {
   draw();
   showTrace(r.trace, r.extra);
   showResult(r.kind, r.title, r.text);
-  document.querySelectorAll("#runs .run").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.i === i)));
+  document.querySelectorAll("#ej-runs .run").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.i === i)));
 }
 
 function renderRuns(title, hint) {
-  $("runsTitle").textContent = title;
-  $("runsHint").textContent = hint || "";
-  $("runs").innerHTML = RUNS.map((r, i) =>
+  $("ej-runsTitle").textContent = title;
+  $("ej-runsHint").textContent = hint || "";
+  $("ej-runs").innerHTML = RUNS.map((r, i) =>
     `<button type="button" class="run" data-i="${i}" aria-pressed="false"><span>${esc(r.label)}</span><span class="pill ${r.kind}">${esc(r.pill)}</span></button>`
   ).join("");
   selectRun(0);
 }
-$("runs").onclick = (e) => {
+$("ej-runs").onclick = (e) => {
   const b = e.target.closest("button.run");
   if (b) selectRun(+b.dataset.i);
 };
@@ -630,8 +1390,8 @@ function needData(needK, needGroups) {
   const n = prepare();
   draw();
   RUNS = [];
-  $("runs").innerHTML = "";
-  $("runsHint").textContent = "";
+  $("ej-runs").innerHTML = "";
+  $("ej-runsHint").textContent = "";
   if (!n) { showResult("no", "Sin datos", "Escribe al menos una arista, por ejemplo A-B."); return null; }
   const ks = readKs();
   if (needK && !ks.length) { showResult("no", "Falta k", "Escribe al menos un tamaño k de 2 en adelante, por ejemplo 3."); return null; }
@@ -641,8 +1401,8 @@ function needData(needK, needGroups) {
 }
 
 /* ---------- botones de método ---------- */
-$("bBack").onclick = () => {
-  setActive("bBack");
+$("ej-bBack").onclick = () => {
+  setActive("ej-bBack");
   const d = needData(true, false);
   if (!d) return;
   RUNS = d.ks.map((k) => {
@@ -658,8 +1418,8 @@ $("bBack").onclick = () => {
   renderRuns("Resultado por k", "Pulsa un resultado para ver su grupo y su recorrido.");
 };
 
-$("bVoraz").onclick = () => {
-  setActive("bVoraz");
+$("ej-bVoraz").onclick = () => {
+  setActive("ej-bVoraz");
   const d = needData(true, false);
   if (!d) return;
   const { res, trace } = voraz(G);
@@ -679,8 +1439,8 @@ $("bVoraz").onclick = () => {
   renderRuns("Voraz frente a cada k", "El voraz corre una sola vez; cada fila lo compara con un k distinto.");
 };
 
-$("bVer").onclick = () => {
-  setActive("bVer");
+$("ej-bVer").onclick = () => {
+  setActive("ej-bVer");
   const d = needData(false, true);
   if (!d) return;
   RUNS = d.gr.map((arr) => {
@@ -710,6 +1470,25 @@ $("bVer").onclick = () => {
 /* ---------- arranque ---------- */
 refreshSelect(BUILTIN[0].name);
 loadProblem(BUILTIN[0].name);
+
+})();
+</script>
+<script>
+(function () {
+  function show() {
+    var h = (location.hash || "").replace("#", "");
+    var v = h === "detector" || h === "ejemplos" ? "detector" : "demostracion";
+    document.getElementById("view-dem").hidden = v !== "demostracion";
+    document.getElementById("view-ej").hidden = v !== "detector";
+    document.querySelectorAll(".mtabs a").forEach(function (a) {
+      var on = a.dataset.v === v;
+      a.classList.toggle("on", on);
+      if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
+  }
+  window.addEventListener("hashchange", function () { show(); window.scrollTo(0, 0); });
+  show();
+})();
 </script>
 
 </body></html>
